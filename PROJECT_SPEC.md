@@ -1,9 +1,9 @@
-# ESP32 NeoTrellis Box - Project Specification
+# ESP32 NeoTrellis Box — Requirements Specification
 
 ## Document Information
 
 - **Project Name**: ESP32 NeoTrellis Box
-- **Version**: 1.0
+- **Version**: 2.0
 - **Date**: February 2026
 - **Status**: In Development
 
@@ -11,432 +11,360 @@
 
 ### 1.1 Purpose
 
-The ESP32 NeoTrellis Box is a home automation human interface device (HID) designed to provide tactile control and visual feedback for smart home systems. It supersedes the original NeoTrellis keypad built on the Particle.io Electron platform, offering improved performance, reliability, and features through the ESP32 platform.
+The ESP32 NeoTrellis Box is a home automation human
+interface device (HID) that provides tactile control and
+visual feedback for smart home systems.  It supersedes the
+original NeoTrellis keypad built on the Particle.io
+Electron platform, offering improved performance,
+reliability, and features through the ESP32 platform.
 
 ### 1.2 Scope
 
-This project encompasses both hardware and software development:
+This project encompasses hardware, firmware, and
+integration work:
 
-- **Hardware**: Custom PCB design for integrating ESP32 and Adafruit NeoTrellis
-- **Firmware**: ESP32 software for button handling, LED control, and home automation integration
-- **Integration**: Communication protocols for home automation platforms
+- **Hardware** — Custom PCB integrating ESP32, Adafruit
+  NeoTrellis, and 18650 Li-ion battery management.
+- **Firmware** — ESP32 software for button handling, LED
+  control, and home automation integration.
+- **Enclosure** — Sourced or adapted 3D-printable
+  enclosure design.
+- **Integration** — Communication protocols for home
+  automation platforms (MQTT, HTTP).
 
 ### 1.3 Goals
 
-- Create a reliable, modular home automation controller
-- Provide intuitive visual feedback through RGB LEDs
-- Enable easy configuration and customization
-- Support popular home automation protocols (MQTT, HTTP, etc.)
-- Design manufacturable hardware suitable for DIY assembly
+1. Create a reliable, modular home automation controller.
+2. Provide intuitive visual feedback through RGB LEDs.
+3. Enable easy configuration and customisation.
+4. Support popular home automation protocols.
+5. Support wireless (battery) and wired (USB) operation.
+6. Design manufacturable hardware suitable for DIY
+   assembly.
 
-## 2. Hardware Specifications
+---
 
-### 2.1 Architecture Overview
+## 2. Hardware Requirements
 
-```
-┌─────────────────────────────────────┐
-│     ESP32 NeoTrellis Box PCB        │
-│                                     │
-│  ┌──────────┐      ┌─────────────┐ │
-│  │  ESP32   │◄────►│  NeoTrellis │ │
-│  │  Module  │ I2C  │  4x4 Keypad │ │
-│  └──────────┘      └─────────────┘ │
-│       │                             │
-│       ├─► Power Regulation          │
-│       ├─► WiFi Antenna              │
-│       └─► GPIO Expansion            │
-└─────────────────────────────────────┘
-```
+### 2.1 Microcontroller — REQ-HW-010
 
-### 2.2 Core Components
+| Attribute | Requirement |
+|-----------|-------------|
+| Part | ESP32-WROOM-32 or compatible |
+| CPU | Dual-core Xtensa LX6 @ 240 MHz |
+| RAM | ≥ 520 KB SRAM |
+| WiFi | 802.11 b/g/n |
+| Bluetooth | 4.2 BR/EDR + BLE |
+| Interfaces | I2C, SPI, UART, ADC |
 
-#### 2.2.1 Microcontroller
+### 2.2 Input Device — REQ-HW-020
 
-- **Part**: ESP32-WROOM-32 or compatible module
-- **Specifications**:
-  - Dual-core Xtensa LX6 @ 240 MHz
-  - 520 KB SRAM
-  - WiFi 802.11 b/g/n
-  - Bluetooth 4.2 BR/EDR and BLE
-  - Multiple I2C, SPI, UART interfaces
+| Attribute | Requirement |
+|-----------|-------------|
+| Part | Adafruit NeoTrellis 4x4 Keypad |
+| Buttons | 16 RGB-backlit elastomer keys |
+| Interface | I2C (seesaw protocol) |
+| Voltage | 3.3 V or 5 V |
+| Addressing | Individual button addressing |
 
-#### 2.2.2 Input Device
+### 2.3 Power Supply — REQ-HW-030
 
-- **Part**: Adafruit NeoTrellis 4x4 Elastomer Keypad
-- **Specifications**:
-  - 16 RGB backlit buttons
-  - I2C interface (seesaw protocol)
-  - 3.3V or 5V operation
-  - Individual button addressing
-  - Elastomer button pad with RGB LED matrix
+The device shall support **two operating modes**:
 
-#### 2.2.3 Power Supply
+1. **Wired** — 5 V DC via USB Type-C.
+2. **Wireless / Backup** — Rechargeable 18650 Li-ion cell.
 
-- **Input**: 5V DC via USB Type-C or barrel jack
-- **Regulation**: 3.3V LDO for ESP32 and NeoTrellis
-- **Current Requirements**:
-  - ESP32: ~500mA (peak during WiFi transmission)
-  - NeoTrellis: ~200mA (all LEDs at full brightness)
-  - Total budget: 1A recommended
+| Attribute | Requirement |
+|-----------|-------------|
+| USB input | 5 V via USB Type-C connector |
+| Battery | Single 18650 Li-ion cell (3.7 V nominal) |
+| Charging | Integrated Li-ion charge controller (e.g. TP4056) charging from USB |
+| Protection | Over-charge, over-discharge, and short-circuit protection |
+| Regulation | 3.3 V LDO for ESP32 and NeoTrellis |
+| Power path | Seamless switchover between USB and battery |
 
-### 2.3 PCB Design
+#### 2.3.1 Current Budget — REQ-HW-031
 
-#### 2.3.1 Design Tool
+| Subsystem | Peak Current |
+|-----------|-------------|
+| ESP32 (WiFi TX) | ~500 mA |
+| NeoTrellis (all LEDs max) | ~200 mA |
+| Charge controller quiescent | ~2 mA |
+| **Total budget** | **1 A recommended** |
 
-- **Software**: KiCAD 7.0 or later
-- **Files Location**: `/hardware` directory
+#### 2.3.2 Battery Life — REQ-HW-032
 
-#### 2.3.2 PCB Specifications
+- A 3 000 mAh 18650 cell shall provide ≥ 3 hours of
+  continuous wireless operation at typical LED brightness.
+- The firmware shall expose battery voltage via ADC for
+  low-battery indication on the keypad LEDs.
 
-- **Layers**: 2-layer PCB
-- **Dimensions**: TBD (optimized for enclosure)
-- **Mounting**: Standoff holes for ESP32 and NeoTrellis
-- **Connectors**:
-  - USB Type-C or Micro USB for power
-  - I2C header for NeoTrellis
-  - GPIO header for expansion (optional)
+### 2.4 PCB — REQ-HW-040
 
-#### 2.3.3 Key Design Considerations
+| Attribute | Requirement |
+|-----------|-------------|
+| Layers | 2-layer PCB |
+| Design tool | KiCAD 7.0+ |
+| Connectors | USB Type-C, I2C header, 18650 holder or JST connector |
+| Mounting | Standoff holes for ESP32 and NeoTrellis |
+| ESD | Protection on exposed connectors |
+| RF | WiFi antenna clearance zone |
+| Pull-ups | 4.7 kΩ I2C pull-up resistors |
+| Decoupling | Capacitors on all power rails |
 
-- Proper I2C pull-up resistors (4.7kΩ recommended)
-- Decoupling capacitors for stable power delivery
-- RF considerations for WiFi antenna placement
-- ESD protection on exposed connectors
-- Optional battery backup circuit
+### 2.5 Enclosure — REQ-HW-050
 
-### 2.4 Enclosure
+| Attribute | Requirement |
+|-----------|-------------|
+| Source | Search [Thingiverse](https://www.thingiverse.com/) for suitable existing designs; adapt as needed |
+| Material | 3D-printed PLA or PETG |
+| Fit | Accommodate PCB, NeoTrellis keypad, and 18650 cell |
+| Access | USB Type-C port accessible for charging |
+| Ventilation | Adequate heat dissipation |
+| Mounting | Wall-mount and/or desktop stand option |
 
-- Design to accommodate PCB and NeoTrellis
-- Access for USB connector
-- Ventilation for heat dissipation
-- Mounting options (wall-mount, desktop stand)
-- Suggested material: 3D printed plastic or laser-cut acrylic
+---
 
-## 3. Software Specifications
+## 3. Firmware Requirements
 
-### 3.1 Development Environment
+### 3.1 Button Handling — REQ-FW-010
 
-#### 3.1.1 Platform Options
+- Poll NeoTrellis for button events via I2C.
+- Debounce presses in software.
+- Support press, long-press, and release actions.
+- Map each button to a configurable automation command.
+- JSON-based per-button action definitions.
 
-- **Option 1**: Arduino IDE with ESP32 board support
-- **Option 2**: PlatformIO (recommended for advanced features)
-- **Option 3**: ESP-IDF native development
+### 3.2 LED Control — REQ-FW-020
 
-#### 3.1.2 Required Libraries
+- Set individual LED colours (RGB, 8-bit per channel).
+- Support colour animations and transitions.
+- Indicate device status through colour and pattern:
 
-- **Adafruit_NeoTrellis**: Button and LED control
-- **WiFi**: Network connectivity
-- **PubSubClient**: MQTT communication
-- **ArduinoJson**: Configuration and message parsing
-- **AsyncWebServer**: Web interface (optional)
-- **ArduinoOTA**: Over-the-air updates
+| State | Indicator |
+|-------|-----------|
+| Off / inactive | Dim white (#0A0A0A) |
+| On / active | Warm white (#FFC864) |
+| Unavailable | Red (#FF0000) |
+| Loading | Blue pulse (#0000FF) |
+| Error | Red blink (#FF0000) |
+| Low battery | Orange pulse (#FF8000) |
 
-### 3.2 Firmware Architecture
+- Adjustable global brightness.
 
-#### 3.2.1 Core Modules
+### 3.3 Network Connectivity — REQ-FW-030
 
-```
-┌─────────────────────────────────────┐
-│         Main Application            │
-├─────────────────────────────────────┤
-│  Button Handler  │  LED Controller  │
-├──────────────────┼──────────────────┤
-│    Configuration Manager            │
-├─────────────────────────────────────┤
-│  WiFi Manager    │  MQTT Client     │
-├──────────────────┼──────────────────┤
-│  Web Server      │  OTA Updater     │
-└─────────────────────────────────────┘
-```
+- WiFi STA mode with WPA2/WPA3 encryption.
+- Captive-portal AP mode for initial WiFi setup.
+- Automatic reconnection with exponential backoff.
+- Fallback to AP mode after repeated failures.
+- Persistent credential storage in ESP32 NVS.
 
-#### 3.2.2 Button Handler
+### 3.4 MQTT Integration — REQ-FW-040
 
-- **Functionality**:
-  - Poll NeoTrellis for button events
-  - Debounce button presses
-  - Support press, hold, and release actions
-  - Map buttons to automation commands
+- Connect to a configurable MQTT broker.
+- Subscribe to device-state topics.
+- Publish button-press command topics.
+- Support Home Assistant MQTT auto-discovery.
+- Optional TLS encryption.
+- Username / password authentication.
 
-- **Configuration**:
-  - JSON-based button mapping
-  - Per-button action definitions
-  - Support for multiple action types
+### 3.5 HTTP / REST API — REQ-FW-050
 
-#### 3.2.3 LED Controller
+- Direct HTTP requests to smart-home devices.
+- RESTful status and configuration endpoints.
+- Webhook support.
 
-- **Functionality**:
-  - Set individual LED colors
-  - Support color animations
-  - Indicate device status through color/pattern
-  - Brightness control
+### 3.6 Web Interface — REQ-FW-060
 
-- **Status Indicators**:
-  - Off: Device inactive
-  - Dim color: Device reachable but off
-  - Bright color: Device active
-  - Blinking: Transitioning state
-  - White: System status
+- Served from ESP32 LittleFS partition.
+- Configuration page (WiFi, MQTT, button mapping).
+- Real-time button-status display.
+- Firmware update upload page.
+- Protected by basic authentication.
 
-### 3.3 Home Automation Integration
+### 3.7 OTA Updates — REQ-FW-070
 
-#### 3.3.1 Communication Protocols
+- Over-the-air firmware update via ArduinoOTA and/or
+  web upload.
+- Secured with password.
 
-**MQTT (Primary)**
-- Connect to MQTT broker
-- Subscribe to device state topics
-- Publish button press commands
-- Support for Home Assistant autodiscovery
+### 3.8 Battery Monitoring — REQ-FW-080
 
-**HTTP/REST API (Secondary)**
-- Direct HTTP requests to smart home devices
-- RESTful API integration
-- Webhook support
+- Read battery voltage via ESP32 ADC.
+- Report battery level to home automation platform
+  (MQTT topic).
+- Display low-battery warning on keypad LEDs when
+  voltage drops below threshold.
 
-#### 3.3.2 Supported Platforms
+### 3.9 Configuration Storage — REQ-FW-090
 
-- Home Assistant (via MQTT)
-- OpenHAB
-- Node-RED
-- Custom MQTT-based systems
+- All user configuration stored in LittleFS or NVS.
+- Survive power cycles and OTA updates.
+- Export / import configuration via web UI.
 
-### 3.4 Configuration
-
-#### 3.4.1 WiFi Setup
-
-- **Captive Portal**: Initial setup mode for WiFi credentials
-- **Fallback**: Revert to AP mode if connection fails
-- **Storage**: Persistent storage in ESP32 NVS
-
-#### 3.4.2 Button Configuration
-
-Format example (JSON):
-```json
-{
-  "buttons": [
-    {
-      "id": 0,
-      "label": "Bedroom Light",
-      "action": {
-        "type": "mqtt",
-        "topic": "home/bedroom/light/set",
-        "payload": "toggle"
-      },
-      "status": {
-        "topic": "home/bedroom/light/state",
-        "on_color": [255, 200, 100],
-        "off_color": [50, 40, 20]
-      }
-    }
-  ]
-}
-```
-
-#### 3.4.3 Web Interface
-
-- Configuration page served by ESP32
-- Real-time button status display
-- MQTT broker settings
-- Button mapping editor
-- Firmware update interface
-
-### 3.5 Security
-
-- **WiFi**: WPA2/WPA3 encryption
-- **MQTT**: TLS encryption support (optional)
-- **Authentication**: Username/password for MQTT
-- **OTA**: Secured firmware updates
-- **Web Interface**: Basic authentication
+---
 
 ## 4. Functional Requirements
 
 ### 4.1 User Stories
 
-1. **As a user**, I want to press a button to turn on my bedroom light
-2. **As a user**, I want the button LED to show the current light status
-3. **As a user**, I want to configure button actions through a web interface
-4. **As a user**, I want to update firmware without disassembling the device
-5. **As a user**, I want the device to reconnect automatically after network outages
+1. **As a user**, I want to press a button to toggle my
+   bedroom light.
+2. **As a user**, I want the button LED to show the
+   current light status.
+3. **As a user**, I want to configure button actions
+   through a web interface.
+4. **As a user**, I want to update firmware without
+   disassembling the device.
+5. **As a user**, I want the device to reconnect
+   automatically after network outages.
+6. **As a user**, I want the device to operate on battery
+   power when unplugged.
+7. **As a user**, I want to see a low-battery warning on
+   the keypad.
 
-### 4.2 System Requirements
+### 4.2 Performance — REQ-SYS-010
 
-#### 4.2.1 Performance
+| Metric | Target |
+|--------|--------|
+| Button response time | < 100 ms |
+| LED update latency | < 500 ms |
+| WiFi reconnection | < 10 s |
+| MQTT reconnection | Automatic, exponential backoff |
 
-- Button press response time: < 100ms
-- LED update latency: < 500ms
-- WiFi reconnection time: < 10 seconds
-- MQTT reconnection: Automatic with exponential backoff
+### 4.3 Reliability — REQ-SYS-020
 
-#### 4.2.2 Reliability
+- 24/7 continuous operation capability.
+- Automatic recovery from network failures.
+- Hardware watchdog timer for crash recovery.
+- Persistent configuration across power cycles.
 
-- 24/7 operation capability
-- Automatic recovery from network failures
-- Watchdog timer for crash recovery
-- Persistent configuration storage
+### 4.4 Usability — REQ-SYS-030
 
-#### 4.2.3 Usability
+- Clear, intuitive LED status indicators.
+- Simple web-based configuration.
+- Responsive tactile button feedback.
+- Minimal first-time setup steps.
 
-- Clear LED status indicators
-- Simple web-based configuration
-- Responsive button feedback
-- Minimal setup requirements
+---
 
-## 5. Development Roadmap
+## 5. Supported Platforms
 
-### Phase 1: Hardware Design (Weeks 1-4)
+| Platform | Protocol |
+|----------|----------|
+| Home Assistant | MQTT (auto-discovery) |
+| OpenHAB | MQTT |
+| Node-RED | MQTT |
+| Custom systems | MQTT / HTTP |
 
-- [ ] Create schematic in KiCAD
-- [ ] Design PCB layout
-- [ ] Generate BOM (Bill of Materials)
-- [ ] Order prototype PCBs
-- [ ] Assemble and test prototype
-
-### Phase 2: Core Firmware (Weeks 3-6)
-
-- [ ] Set up development environment
-- [ ] Implement NeoTrellis driver integration
-- [ ] Develop button handler
-- [ ] Implement LED controller
-- [ ] Test basic functionality
-
-### Phase 3: Network Integration (Weeks 5-8)
-
-- [ ] WiFi manager implementation
-- [ ] MQTT client integration
-- [ ] Configuration storage
-- [ ] Network reliability testing
-
-### Phase 4: Home Automation Integration (Weeks 7-10)
-
-- [ ] Home Assistant MQTT discovery
-- [ ] Button-to-action mapping
-- [ ] Status feedback implementation
-- [ ] Integration testing
-
-### Phase 5: Web Interface (Weeks 9-12)
-
-- [ ] Basic web server
-- [ ] Configuration interface
-- [ ] Real-time status display
-- [ ] OTA update mechanism
-
-### Phase 6: Testing & Documentation (Weeks 11-14)
-
-- [ ] Comprehensive testing
-- [ ] User documentation
-- [ ] Installation guide
-- [ ] Example configurations
-- [ ] Final hardware revision
+---
 
 ## 6. Technical Constraints
 
-### 6.1 Hardware Limitations
+### 6.1 Hardware
 
-- I2C bus speed limitations (max 400 kHz)
-- ESP32 power consumption considerations
-- PCB size constraints for enclosure
-- Heat dissipation requirements
+- I2C bus speed: max 400 kHz.
+- ESP32 peak current during WiFi TX: ~500 mA.
+- PCB dimensions constrained by enclosure.
+- 18650 cell adds ~18.5 × 65 mm to enclosure volume.
+- Heat dissipation from charge controller and LDO.
 
-### 6.2 Software Limitations
+### 6.2 Firmware
 
-- ESP32 memory constraints
-- WiFi range limitations
-- MQTT broker availability dependency
-- NeoTrellis library compatibility
+- ESP32 SRAM: 520 KB (shared with WiFi stack).
+- LittleFS partition size limits web UI assets.
+- WiFi range limited by on-module antenna.
+- Dependent on external MQTT broker availability.
+- NeoTrellis seesaw library compatibility.
 
-## 7. Testing Strategy
+---
 
-### 7.1 Hardware Testing
+## 7. Testing & Acceptance Criteria
 
-- Continuity and power supply verification
-- I2C communication validation
-- Button press detection
-- LED brightness and color accuracy
-- Long-term reliability testing
+### 7.1 Hardware Tests
 
-### 7.2 Software Testing
+- Power supply continuity and voltage regulation.
+- I2C communication with NeoTrellis (bus scan).
+- All 16 buttons register presses correctly.
+- LED colour and brightness accuracy.
+- Battery charging and protection circuit validation.
+- Long-term reliability (48-hour soak test).
 
-- Unit tests for core modules
-- Integration tests for MQTT communication
-- Network failure recovery testing
-- Load testing (rapid button presses)
-- Power cycle recovery testing
+### 7.2 Firmware Tests
 
-### 7.3 Integration Testing
+- Unit tests for each core module.
+- MQTT publish / subscribe integration tests.
+- Network failure and recovery tests.
+- Rapid button-press load test.
+- Power-cycle configuration persistence test.
+- Battery voltage ADC accuracy test.
 
-- End-to-end home automation scenarios
-- Multi-device status monitoring
-- Configuration persistence
-- OTA update validation
+### 7.3 System Integration Tests
+
+- End-to-end Home Assistant toggle scenario.
+- Multi-device status monitoring.
+- OTA update followed by configuration persistence
+  check.
+- Battery-to-USB switchover during operation.
+
+---
 
 ## 8. Documentation Deliverables
 
-- [ ] Hardware schematic (PDF)
+- [ ] Hardware schematic (PDF export)
 - [ ] PCB layout and Gerber files
 - [ ] Bill of Materials (BOM)
 - [ ] Assembly instructions
 - [ ] Firmware installation guide
 - [ ] Configuration guide
-- [ ] API documentation
+- [ ] API documentation (MQTT topics, HTTP endpoints)
 - [ ] Troubleshooting guide
-- [ ] Example configurations
+- [ ] Example button configurations
+
+---
 
 ## 9. Future Enhancements
 
-### Potential Features
+- **Display Integration** — small OLED for status
+  messages.
+- **Sensors** — temperature, humidity, or motion.
+- **Audio Feedback** — piezo buzzer for button
+  confirmations.
+- **Multi-Panel Support** — chain multiple NeoTrellis
+  units.
+- **Scenes** — complex multi-device actions.
+- **Scheduling** — time-based automation triggers.
+- **Voice Control** — integration with voice assistants.
 
-- **Battery Backup**: Operate during power outages
-- **Display Integration**: Add small OLED for status messages
-- **Sensors**: Temperature, humidity, or motion sensors
-- **Audio Feedback**: Piezo buzzer for button confirmations
-- **Multi-Panel Support**: Chain multiple NeoTrellis units
-- **Scenes**: Complex multi-device actions
-- **Scheduling**: Time-based automation triggers
-- **Voice Control**: Integration with voice assistants
+---
 
 ## 10. References
 
 ### Hardware
 
-- [Adafruit NeoTrellis Documentation](https://learn.adafruit.com/adafruit-neotrellis)
+- [Adafruit NeoTrellis](https://learn.adafruit.com/adafruit-neotrellis)
 - [ESP32 Technical Reference](https://www.espressif.com/en/support/documents/technical-documents)
 - [KiCAD Documentation](https://docs.kicad.org/)
+- [TP4056 Li-Ion Charger](https://dlnmh9ip6v2uc.cloudfront.net/datasheets/Prototyping/TP4056.pdf)
 
 ### Software
 
-- [Arduino-ESP32 Documentation](https://docs.espressif.com/projects/arduino-esp32/)
-- [MQTT Protocol Specification](https://mqtt.org/)
+- [Arduino-ESP32](https://docs.espressif.com/projects/arduino-esp32/)
+- [MQTT Protocol](https://mqtt.org/)
 - [Home Assistant MQTT Discovery](https://www.home-assistant.io/docs/mqtt/discovery/)
 
 ### Related Projects
 
-- Original Particle.io Electron NeoTrellis keypad (predecessor)
+- Original Particle.io Electron NeoTrellis keypad
+  (predecessor).
 - [Adafruit NeoTrellis M4](https://www.adafruit.com/product/4020)
 
-## Appendix A: Pin Mapping
+---
 
-*To be completed during hardware design phase*
+## Appendix A: Revision History
 
-| ESP32 Pin | Function | NeoTrellis Connection |
-|-----------|----------|----------------------|
-| GPIO21    | SDA      | I2C Data             |
-| GPIO22    | SCL      | I2C Clock            |
-| 3.3V      | Power    | VCC                  |
-| GND       | Ground   | GND                  |
-
-## Appendix B: Color Codes
-
-Suggested LED color scheme for device status:
-
-| Device State | RGB Color      | Hex Code |
-|-------------|---------------|----------|
-| Off         | Dim White     | #0A0A0A  |
-| On          | Warm White    | #FFC864  |
-| Unavailable | Red           | #FF0000  |
-| Loading     | Blue (pulse)  | #0000FF  |
-| Error       | Red (blink)   | #FF0000  |
-
-## Appendix C: Revision History
-
-| Version | Date | Author | Changes |
-|---------|------|--------|---------|
-| 1.0     | Feb 2026 | Initial | Initial project specification |
+| Version | Date | Changes |
+|---------|------|---------|
+| 1.0 | Feb 2026 | Initial project specification |
+| 2.0 | Feb 2026 | Split into requirements document; added 18650 battery requirements; added battery monitoring firmware requirements |
