@@ -1,0 +1,39 @@
+{
+  "device": {
+    "name": "neotrellis-livingroom",
+    "mqtt_broker": "homeassistant.local",
+    "mqtt_port": 1883,
+    "mqtt_user": "",
+    "mqtt_pass": ""
+  },
+  "buttons": [
+    {
+      "id": 0,
+      "label": "Bedroom Light",
+      "action": {
+        "type": "mqtt",
+        "topic": "home/bedroom/light/set",
+        "payload": "toggle"
+      },
+      "status": {
+        "topic": "home/bedroom/light/state",
+        "on_color": [255, 200, 100],
+        "off_color": [50, 40, 20]
+      }
+    },
+    {
+      "id": 1,
+      "label": "Living Room Light",
+      "action": {
+        "type": "mqtt",
+        "topic": "home/livingroom/light/set",
+        "payload": "toggle"
+      },
+      "status": {
+        "topic": "home/livingroom/light/state",
+        "on_color": [255, 220, 180],
+        "off_color": [50, 44, 36]
+      }
+    }
+  ]
+}

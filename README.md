@@ -17,61 +17,78 @@ The ESP32 NeoTrellis Box is a customizable home automation human interface devic
 - **Modular Hardware**: Custom PCB design for easy assembly and integration
 - **Home Automation Integration**: Designed to work with popular home automation platforms
 
+## Repository Structure
+
+```
+esp32_neotrellis_box/
+├── hardware/           KiCAD PCB design, BOM, gerbers
+├── firmware/           PlatformIO / ESP32 firmware
+├── enclosure/          3D-print and laser-cut enclosure
+├── docs/               Assembly, configuration, API docs
+├── examples/           Sample button-config JSON files
+├── PROJECT_SPEC.md     Full technical specification
+└── LICENSE
+```
+
 ## Hardware
 
-The hardware consists of a custom PCB that provides:
+Hardware design files live in [`hardware/`](hardware/)
+and are developed with **KiCAD 7.0+**.
 
-- **ESP32 Module Mounting**: Socket or pads for ESP32 development board
-- **NeoTrellis Interface**: I2C connection for Adafruit NeoTrellis 4x4 keypad
-- **Power Management**: Regulated power supply for stable operation
-- **Expansion Options**: Additional GPIO breakouts for future enhancements
+### Core Components
 
-### Components
-
-- ESP32 Development Board (e.g., ESP32-DevKitC, ESP32-WROOM-32)
+- ESP32-WROOM-32 (or compatible module)
 - Adafruit NeoTrellis 4x4 RGB Keypad
-- Custom PCB (designed in KiCAD)
-- Power supply (USB or wall adapter)
+- Custom 2-layer PCB
+- USB Type-C / barrel-jack power input
 
-### Hardware Design
+See [`hardware/README.md`](hardware/README.md) for
+design details and pin mapping.
 
-Hardware design files are located in the `/hardware` directory and are developed using KiCAD.
+## Firmware
 
-## Software
+The PlatformIO project lives in [`firmware/`](firmware/).
 
-The firmware enables:
+Key capabilities:
 
-- **Button Programming**: Configure each button to trigger specific home automation actions
-- **Status Display**: LED colors indicate device states (on/off, brightness levels, etc.)
-- **Network Connectivity**: WiFi connection for communication with home automation systems
-- **MQTT Support**: Integration with MQTT-based automation platforms
-- **Web Interface**: Configuration and monitoring through a web UI
-- **OTA Updates**: Over-the-air firmware updates for easy maintenance
+- **Button Handler** — NeoTrellis polling, debounce,
+  action mapping
+- **LED Controller** — per-button RGB status feedback
+- **WiFi Manager** — captive portal, auto-reconnect
+- **MQTT Client** — Home Assistant discovery, pub/sub
+- **Web Server** — configuration and status UI
+- **OTA Updater** — over-the-air firmware updates
 
-### Software Architecture
+See [`firmware/README.md`](firmware/README.md) for build
+and upload instructions.
 
-- **Platform**: Arduino/ESP-IDF
-- **Communication**: WiFi, MQTT, HTTP/HTTPS
-- **Libraries**: Adafruit_NeoTrellis, WiFi, PubSubClient, etc.
+## Enclosure
+
+3D-printable and laser-cut enclosure designs live in
+[`enclosure/`](enclosure/).
 
 ## Getting Started
 
 ### Prerequisites
 
-- KiCAD (for hardware design)
-- Arduino IDE or PlatformIO (for firmware development)
-- ESP32 board support package
-- Adafruit NeoTrellis library
+- **KiCAD 7.0+** — hardware schematic and PCB layout
+- **PlatformIO** — firmware build and upload
+- ESP32 board support package (installed by PlatformIO)
 
-### Installation
+### Quick Start
 
-*Detailed installation instructions will be added as the project develops.*
+```bash
+# Clone
+git clone https://github.com/tsayles/esp32_neotrellis_box.git
+cd esp32_neotrellis_box
 
-1. Clone this repository
-2. Install required libraries
-3. Configure WiFi and MQTT settings
-4. Upload firmware to ESP32
-5. Assemble hardware components
+# Build firmware
+cd firmware
+pio run
+
+# Flash to ESP32
+pio run -t upload
+```
 
 ## Project Status
 
@@ -90,7 +107,11 @@ This project is in active development. Hardware design and firmware are being de
 
 ## Documentation
 
-- [Project Specification](PROJECT_SPEC.md) - Detailed technical specifications and requirements
+- [Project Specification](PROJECT_SPEC.md) — Detailed technical specifications and requirements
+- [Assembly Guide](docs/assembly-guide.md) — Hardware assembly
+- [Configuration Guide](docs/configuration-guide.md) — WiFi, MQTT, button setup
+- [API Reference](docs/api-reference.md) — MQTT topics, HTTP endpoints
+- [Troubleshooting](docs/troubleshooting.md) — Common issues
 
 ## Contributing
 
