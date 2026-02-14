@@ -69,10 +69,11 @@ integration work:
 
 ### 2.3 Power Supply — REQ-HW-030
 
-The device shall support **two operating modes**:
+The device shall support **three operating modes**:
 
-1. **Wired** — 5 V DC via USB Type-C.
-2. **Wireless / Backup** — Rechargeable 18650 Li-ion cell.
+1. **Wired** — USB Type-C, 5v DC long term, higer voltage fase charge.
+2. **Wired** — 12 V DC barrel connector (fast charging)
+3. **Wireless / Backup** — Rechargeable 18650 Li-ion cell.
 
 | Attribute | Requirement |
 |-----------|-------------|
@@ -94,8 +95,9 @@ The device shall support **two operating modes**:
 
 #### 2.3.2 Battery Life — REQ-HW-032
 
-- A 3 000 mAh 18650 cell shall provide ≥ 3 hours of
-  continuous wireless operation at typical LED brightness.
+- The 18650 cell(c) shall provide ≥ 3 months of
+  continuous wireless operation at typical LED brightness
+  and duty cycle.
 - The firmware shall expose battery voltage via ADC for
   low-battery indication on the keypad LEDs.
 
@@ -103,9 +105,10 @@ The device shall support **two operating modes**:
 
 | Attribute | Requirement |
 |-----------|-------------|
-| Layers | 2-layer PCB |
+| Layers | 2 or 4-layer PCB |
 | Design tool | KiCAD 7.0+ |
-| Connectors | USB Type-C, I2C header, 18650 holder or JST connector |
+| Power Connectors | USB Type-C, 12v DC barrel jack, 18650 holder or JST connector |
+| Data Connectors | I2C header for 4 Pin JST-PH 2mm Cable, USB-C serial debugging | 
 | Mounting | Standoff holes for ESP32 and NeoTrellis |
 | ESD | Protection on exposed connectors |
 | RF | WiFi antenna clearance zone |
@@ -131,7 +134,7 @@ The device shall support **two operating modes**:
 
 - Poll NeoTrellis for button events via I2C.
 - Debounce presses in software.
-- Support press, long-press, and release actions.
+- Support press, long-press, double press, and release actions.
 - Map each button to a configurable automation command.
 - JSON-based per-button action definitions.
 
@@ -148,9 +151,11 @@ The device shall support **two operating modes**:
 | Unavailable | Red (#FF0000) |
 | Loading | Blue pulse (#0000FF) |
 | Error | Red blink (#FF0000) |
-| Low battery | Orange pulse (#FF8000) |
+| Low battery | Orange (#FF8000) once per xx minites |
 
-- Adjustable global brightness.
+- Adjustable global default brightness.
+- Individually brightness adjustment 
+- Timeout to sleep mode to conserve battery.
 
 ### 3.3 Network Connectivity — REQ-FW-030
 
@@ -159,6 +164,7 @@ The device shall support **two operating modes**:
 - Automatic reconnection with exponential backoff.
 - Fallback to AP mode after repeated failures.
 - Persistent credential storage in ESP32 NVS.
+- Bluetooth, USB C initialization (pass wifi and access credentials)
 
 ### 3.4 MQTT Integration — REQ-FW-040
 
@@ -167,7 +173,7 @@ The device shall support **two operating modes**:
 - Publish button-press command topics.
 - Support Home Assistant MQTT auto-discovery.
 - Optional TLS encryption.
-- Username / password authentication.
+- Username / password and/or key / token authentication.
 
 ### 3.5 HTTP / REST API — REQ-FW-050
 
@@ -187,7 +193,7 @@ The device shall support **two operating modes**:
 
 - Over-the-air firmware update via ArduinoOTA and/or
   web upload.
-- Secured with password.
+- Secured with password and/or key / token.
 
 ### 3.8 Battery Monitoring — REQ-FW-080
 
@@ -200,6 +206,7 @@ The device shall support **two operating modes**:
 ### 3.9 Configuration Storage — REQ-FW-090
 
 - All user configuration stored in LittleFS or NVS.
+- Auto configuration via download from repo
 - Survive power cycles and OTA updates.
 - Export / import configuration via web UI.
 
@@ -211,8 +218,8 @@ The device shall support **two operating modes**:
 
 1. **As a user**, I want to press a button to toggle my
    bedroom light.
-2. **As a user**, I want the button LED to show the
-   current light status.
+2. **As a user**, I want the button LED to briefly show the
+   current light status, once the new state has been confirmed.
 3. **As a user**, I want to configure button actions
    through a web interface.
 4. **As a user**, I want to update firmware without
@@ -221,7 +228,9 @@ The device shall support **two operating modes**:
    automatically after network outages.
 6. **As a user**, I want the device to operate on battery
    power when unplugged.
-7. **As a user**, I want to see a low-battery warning on
+7. **As a user**, I want the battery to charge safely and automatically
+   when conneted to external power (USB or 12v barrel connector).
+9. **As a user**, I want to see a low-battery warning on
    the keypad.
 
 ### 4.2 Performance — REQ-SYS-010
@@ -265,6 +274,8 @@ The device shall support **two operating modes**:
 ### 6.1 Hardware
 
 - I2C bus speed: max 400 kHz.
+- NeoTrellis connects to custom pcb via 4 Pin JST-PH 2mm Cable–Female/Female
+  (https://www.adafruit.com/product/3568)
 - ESP32 peak current during WiFi TX: ~500 mA.
 - PCB dimensions constrained by enclosure.
 - 18650 cell adds ~18.5 × 65 mm to enclosure volume.
@@ -335,6 +346,7 @@ The device shall support **two operating modes**:
   units.
 - **Scenes** — complex multi-device actions.
 - **Scheduling** — time-based automation triggers.
+- **Speaker(s) & Microphone** — for interactive voice responce / music output 
 - **Voice Control** — integration with voice assistants.
 
 ---
@@ -347,6 +359,7 @@ The device shall support **two operating modes**:
 - [ESP32 Technical Reference](https://www.espressif.com/en/support/documents/technical-documents)
 - [KiCAD Documentation](https://docs.kicad.org/)
 - [TP4056 Li-Ion Charger](https://dlnmh9ip6v2uc.cloudfront.net/datasheets/Prototyping/TP4056.pdf)
+- [STEMMA Cable - 4 Pin JST-PH 2mm Cable–Female/Female - 150mm/6" Long](https://www.adafruit.com/product/3568)
 
 ### Software
 
@@ -356,8 +369,8 @@ The device shall support **two operating modes**:
 
 ### Related Projects
 
-- Original Particle.io Electron NeoTrellis keypad
-  (predecessor).
+- Original Particle.io Electron NeoTrellis keypad, 
+  [button_cat](firmware/legacy/button-cat.ino).
 - [Adafruit NeoTrellis M4](https://www.adafruit.com/product/4020)
 
 ---
@@ -368,3 +381,4 @@ The device shall support **two operating modes**:
 |---------|------|---------|
 | 1.0 | Feb 2026 | Initial project specification |
 | 2.0 | Feb 2026 | Split into requirements document; added 18650 battery requirements; added battery monitoring firmware requirements |
+| 2.1 | Feb 2026 | Manually refine requiremnts & add legacy firmare source code |
