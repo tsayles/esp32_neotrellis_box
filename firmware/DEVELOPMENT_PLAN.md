@@ -20,19 +20,21 @@
 ├─────────────────────────────────────────┤
 │  Button Handler    │  LED Controller    │
 ├────────────────────┼────────────────────┤
-│  Battery Monitor   │  Config Manager    │
+│  Battery Monitor   │  Sleep Manager     │
+├────────────────────┼────────────────────┤
+│  Config Manager    │  Watchdog          │
 ├─────────────────────────────────────────┤
 │  WiFi Manager      │  MQTT Client       │
 ├────────────────────┼────────────────────┤
 │  Web Server        │  OTA Updater       │
 ├─────────────────────────────────────────┤
 │         Hardware Abstraction Layer       │
-│  ┌──────────┐  ┌──────────┐  ┌───────┐ │
-│  │NeoTrellis│  │  WiFi    │  │  ADC  │ │
-│  │ Driver   │  │  Driver  │  │Driver │ │
-│  └──────────┘  └──────────┘  └───────┘ │
-│        ▲               ▲          ▲     │
-│   Mock / Live     Mock / Live  Mock/Live│
+│  ┌──────────┐ ┌──────┐ ┌─────┐ ┌─────┐│
+│  │NeoTrellis│ │ WiFi │ │ ADC │ │ BLE ││
+│  │ Driver   │ │Driver│ │Drvr │ │Drvr ││
+│  └──────────┘ └──────┘ └─────┘ └─────┘│
+│        ▲          ▲        ▲       ▲   │
+│   Mock / Live  M / L    M / L   M / L │
 └─────────────────────────────────────────┘
 ```
 
@@ -46,10 +48,10 @@ The agent develops firmware **from the hardware up**,
 verifying each layer before building the next:
 
 ```
-Layer 1 ─► Hardware Drivers (NeoTrellis, ADC, WiFi)
-Layer 2 ─► Core Modules (Button Handler, LED, Battery)
+Layer 1 ─► Hardware Drivers (NeoTrellis, ADC, WiFi, BLE)
+Layer 2 ─► Core Modules (Button, LED, Battery, Sleep)
 Layer 3 ─► Network Services (WiFi Mgr, MQTT, Web)
-Layer 4 ─► Application Logic (Config, Scenes, OTA)
+Layer 4 ─► Application (Config, OTA, Watchdog)
 Layer 5 ─► Integration (End-to-End, System Tests)
 ```
 
@@ -65,6 +67,7 @@ Every hardware driver has **two implementations**:
 | NeoTrellis | I2C via seesaw lib | Simulated key events + LED state |
 | WiFi | ESP32 WiFi stack | Loopback / stub |
 | ADC (battery) | ESP32 ADC peripheral | Configurable voltage model |
+| BLE | ESP32 BLE stack (NimBLE) | Stub provisioning responder |
 | MQTT | PubSubClient | In-process broker stub |
 
 **Parity rule**: Mock and live drivers implement the
@@ -110,6 +113,7 @@ Phase 5  ──►  Completion & Human Validation
 | Library | Purpose | PlatformIO lib_deps |
 |---------|---------|---------------------|
 | Adafruit seesaw | NeoTrellis I2C driver | `adafruit/Adafruit seesaw Library` |
+| NimBLE-Arduino | BLE provisioning | `h2zero/NimBLE-Arduino` |
 | PubSubClient | MQTT client | `knolleary/PubSubClient` |
 | ArduinoJson | JSON config parsing | `bblanchon/ArduinoJson` |
 | ESPAsyncWebServer | Web UI | `me-no-dev/ESPAsyncWebServer` |
@@ -193,6 +197,16 @@ Agent connects to ESP32 via serial port for:
 - [ ] Unit tests + parity check.
 - [ ] Commit; post status.
 
+#### 2d. BLE Driver
+
+- [ ] Define abstract `IBLE` interface:
+  - `startProvisioning()`, `stopProvisioning()`,
+    `isProvisioning()`, `onCredentialReceived()`.
+- [ ] Implement live driver (NimBLE stack).
+- [ ] Implement mock driver (stub credential responder).
+- [ ] Unit tests + parity check.
+- [ ] Commit; post status.
+
 ### Phase 3 — Core Modules (Agent — Autonomous)
 
 **Layer 2: Built on verified drivers.**
@@ -202,7 +216,7 @@ Agent connects to ESP32 via serial port for:
 - [ ] Implement button handler using `ITrellis`:
   - Polling loop with configurable interval.
   - Software debounce.
-  - Press, long-press, release events.
+  - Press, long-press, double-press, release events.
   - Button-to-action mapping from JSON config.
 - [ ] Unit tests against mock driver.
 - [ ] HIL tests against live driver (agent triggers
@@ -216,8 +230,9 @@ Agent connects to ESP32 via serial port for:
 - [ ] Implement LED controller using `ITrellis`:
   - Set colour per button.
   - Animations (pulse, blink, fade).
-  - Status-based colour mapping.
+  - Status-based colour mapping (incl. Charging state).
   - Global brightness control.
+  - Individual per-button brightness adjustment.
 - [ ] Unit tests (mock: verify state; live: visual).
 - [ ] Parity check; commit.
 
@@ -227,6 +242,15 @@ Agent connects to ESP32 via serial port for:
   - Periodic voltage sampling.
   - Percentage estimation (voltage curve lookup).
   - Low-battery LED warning trigger.
+- [ ] Unit tests + parity check; commit.
+
+#### 3d. Sleep Manager
+
+- [ ] Implement sleep manager:
+  - Configurable inactivity timeout.
+  - Transition to ESP32 light-sleep or deep-sleep.
+  - Wake on button press (NeoTrellis interrupt).
+  - Restore state on wake.
 - [ ] Unit tests + parity check; commit.
 
 ### Phase 4 — Network Services (Agent — Autonomous)
@@ -240,6 +264,8 @@ Agent connects to ESP32 via serial port for:
   - Credential storage in NVS.
   - Auto-reconnect with exponential backoff.
   - Fallback to AP mode.
+  - BLE provisioning flow (receive WiFi credentials
+    via BLE, store in NVS, connect).
 - [ ] Tests: mock (connection state machine),
       live (actual WiFi connect).
 - [ ] Parity check; commit.
@@ -248,6 +274,7 @@ Agent connects to ESP32 via serial port for:
 
 - [ ] Implement MQTT client:
   - Configurable broker, port, credentials.
+  - Username / password and/or key / token auth.
   - Publish button events.
   - Subscribe to device state topics.
   - Home Assistant auto-discovery.
@@ -261,6 +288,7 @@ Agent connects to ESP32 via serial port for:
 - [ ] Implement async web server:
   - Serve configuration UI from LittleFS.
   - REST endpoints: `/api/status`, `/api/config`.
+  - BLE provisioning status and trigger.
   - Basic authentication.
 - [ ] Tests: mock (HTTP request/response validation),
       live (browser + curl).
@@ -273,12 +301,16 @@ Agent connects to ESP32 via serial port for:
 - [ ] Configuration manager:
   - Load/save JSON config from LittleFS.
   - Button mapping, MQTT settings, WiFi credentials.
+  - Auto configuration via download from repo.
   - Web UI import/export.
 - [ ] OTA updater:
   - ArduinoOTA + web upload.
-  - Password protection.
+  - Password and/or key / token protection.
 - [ ] Battery reporting via MQTT:
   - Publish `neotrellis/<id>/battery` topic.
+- [ ] Watchdog module (REQ-FW-100):
+  - Configure and feed hardware watchdog timer.
+  - Log watchdog reset events for diagnostics.
 - [ ] Tests for each module; commit.
 
 ### Phase 6 — Integration Testing (Agent — Autonomous)
@@ -290,7 +322,8 @@ Agent connects to ESP32 via serial port for:
 - [ ] End-to-end test: HA state change → MQTT → LED
       update on keypad.
 - [ ] OTA update → verify config persistence.
-- [ ] Battery switchover during active MQTT session.
+- [ ] Battery switchover (USB ↔ battery ↔ 12 V) during
+      active MQTT session.
 - [ ] 24-hour soak test (agent monitors serial + MQTT
       for crashes or brownouts).
 - [ ] Full mock suite: all tests pass without hardware.
@@ -338,7 +371,10 @@ Example:
 test/drivers/neotrellis/test_button_events.cpp
 test/drivers/neotrellis/test_led_control.cpp
 test/core/button_handler/test_debounce.cpp
+test/core/button_handler/test_double_press.cpp
+test/core/sleep_manager/test_timeout.cpp
 test/network/mqtt/test_reconnect.cpp
+test/network/ble/test_provisioning.cpp
 test/integration/test_button_to_mqtt.cpp
 ```
 
@@ -390,6 +426,7 @@ Agent runs tests in a loop:
 | Build failure | Analyse error, fix, retry |
 | Test fails 5× consecutive | Pause, escalate, continue other work |
 | NeoTrellis not on I2C bus | Skip live trellis tests, escalate |
+| BLE stack init failure | Skip BLE provisioning tests, escalate |
 | Disk space low | Clean build artifacts, escalate if < 5 % |
 
 ---
@@ -410,18 +447,23 @@ firmware/
 │   │   ├── battery_mock.cpp
 │   │   ├── iwifi.h             Interface
 │   │   ├── wifi_live.cpp
-│   │   └── wifi_mock.cpp
+│   │   ├── wifi_mock.cpp
+│   │   ├── ible.h              Interface
+│   │   ├── ble_live.cpp
+│   │   └── ble_mock.cpp
 │   ├── core/
 │   │   ├── button_handler.cpp
 │   │   ├── led_controller.cpp
-│   │   └── battery_monitor.cpp
+│   │   ├── battery_monitor.cpp
+│   │   └── sleep_manager.cpp
 │   ├── network/
 │   │   ├── wifi_manager.cpp
 │   │   ├── mqtt_client.cpp
 │   │   └── web_server.cpp
 │   └── app/
 │       ├── config_manager.cpp
-│       └── ota_updater.cpp
+│       ├── ota_updater.cpp
+│       └── watchdog.cpp
 ├── include/
 │   └── (header files)
 ├── lib/
