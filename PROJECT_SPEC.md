@@ -3,7 +3,7 @@
 ## Document Information
 
 - **Project Name**: ESP32 NeoTrellis Box
-- **Version**: 2.0
+- **Version**: 2.1
 - **Date**: February 2026
 - **Status**: In Development
 
@@ -24,13 +24,15 @@ This project encompasses hardware, firmware, and
 integration work:
 
 - **Hardware** — Custom PCB integrating ESP32, Adafruit
-  NeoTrellis, and 18650 Li-ion battery management.
+  NeoTrellis, 18650 Li-ion battery management, and
+  dual wired power inputs (USB-C, 12 V barrel).
 - **Firmware** — ESP32 software for button handling, LED
-  control, and home automation integration.
+  control, BLE provisioning, and home automation
+  integration.
 - **Enclosure** — Sourced or adapted 3D-printable
   enclosure design.
 - **Integration** — Communication protocols for home
-  automation platforms (MQTT, HTTP).
+  automation platforms (MQTT, HTTP, Bluetooth).
 
 ### 1.3 Goals
 
@@ -38,7 +40,8 @@ integration work:
 2. Provide intuitive visual feedback through RGB LEDs.
 3. Enable easy configuration and customisation.
 4. Support popular home automation protocols.
-5. Support wireless (battery) and wired (USB) operation.
+5. Support wireless (battery) and wired (USB-C, 12 V
+   barrel) operation.
 6. Design manufacturable hardware suitable for DIY
    assembly.
 
@@ -71,18 +74,20 @@ integration work:
 
 The device shall support **three operating modes**:
 
-1. **Wired** — USB Type-C, 5v DC long term, higer voltage fase charge.
-2. **Wired** — 12 V DC barrel connector (fast charging)
+1. **Wired** — USB Type-C, 5 V DC long-term,
+   higher-voltage fast charge.
+2. **Wired** — 12 V DC barrel connector (fast charging).
 3. **Wireless / Backup** — Rechargeable 18650 Li-ion cell.
 
 | Attribute | Requirement |
 |-----------|-------------|
 | USB input | 5 V via USB Type-C connector |
+| 12 V input | 12 V DC barrel jack with reverse-polarity protection |
 | Battery | Single 18650 Li-ion cell (3.7 V nominal) |
-| Charging | Integrated Li-ion charge controller (e.g. TP4056) charging from USB |
+| Charging | Integrated Li-ion charge controller (e.g. TP4056) charging from USB or 12 V input |
 | Protection | Over-charge, over-discharge, and short-circuit protection |
-| Regulation | 3.3 V LDO for ESP32 and NeoTrellis |
-| Power path | Seamless switchover between USB and battery |
+| Regulation | 3.3 V LDO for ESP32 and NeoTrellis; 12 V → 5 V step-down regulator |
+| Power path | Seamless switchover between USB, 12 V, and battery |
 
 #### 2.3.1 Current Budget — REQ-HW-031
 
@@ -91,11 +96,12 @@ The device shall support **three operating modes**:
 | ESP32 (WiFi TX) | ~500 mA |
 | NeoTrellis (all LEDs max) | ~200 mA |
 | Charge controller quiescent | ~2 mA |
-| **Total budget** | **1 A recommended** |
+| 12 V → 5 V regulator quiescent | ~5 mA |
+| **Total budget** | **1 A recommended (5 V rail)** |
 
 #### 2.3.2 Battery Life — REQ-HW-032
 
-- The 18650 cell(c) shall provide ≥ 3 months of
+- The 18650 cell(s) shall provide ≥ 3 months of
   continuous wireless operation at typical LED brightness
   and duty cycle.
 - The firmware shall expose battery voltage via ADC for
@@ -122,7 +128,7 @@ The device shall support **three operating modes**:
 | Source | Search [Thingiverse](https://www.thingiverse.com/) for suitable existing designs; adapt as needed |
 | Material | 3D-printed PLA or PETG |
 | Fit | Accommodate PCB, NeoTrellis keypad, and 18650 cell |
-| Access | USB Type-C port accessible for charging |
+| Access | USB Type-C and 12 V barrel connector accessible for charging |
 | Ventilation | Adequate heat dissipation |
 | Mounting | Wall-mount and/or desktop stand option |
 
@@ -151,10 +157,11 @@ The device shall support **three operating modes**:
 | Unavailable | Red (#FF0000) |
 | Loading | Blue pulse (#0000FF) |
 | Error | Red blink (#FF0000) |
-| Low battery | Orange (#FF8000) once per xx minites |
+| Low battery | Orange (#FF8000) once per xx minutes |
+| Charging | Green steady (#00FF00) |
 
 - Adjustable global default brightness.
-- Individually brightness adjustment 
+- Individual per-button brightness adjustment.
 - Timeout to sleep mode to conserve battery.
 
 ### 3.3 Network Connectivity — REQ-FW-030
@@ -164,7 +171,8 @@ The device shall support **three operating modes**:
 - Automatic reconnection with exponential backoff.
 - Fallback to AP mode after repeated failures.
 - Persistent credential storage in ESP32 NVS.
-- Bluetooth, USB C initialization (pass wifi and access credentials)
+- BLE and USB-C initialization (pass WiFi and access
+  credentials to device).
 
 ### 3.4 MQTT Integration — REQ-FW-040
 
@@ -184,7 +192,8 @@ The device shall support **three operating modes**:
 ### 3.6 Web Interface — REQ-FW-060
 
 - Served from ESP32 LittleFS partition.
-- Configuration page (WiFi, MQTT, button mapping).
+- Configuration page (WiFi, MQTT, BLE provisioning,
+  button mapping).
 - Real-time button-status display.
 - Firmware update upload page.
 - Protected by basic authentication.
@@ -206,9 +215,16 @@ The device shall support **three operating modes**:
 ### 3.9 Configuration Storage — REQ-FW-090
 
 - All user configuration stored in LittleFS or NVS.
-- Auto configuration via download from repo
+- Auto configuration via download from repo.
 - Survive power cycles and OTA updates.
 - Export / import configuration via web UI.
+
+### 3.10 Watchdog Timer — REQ-FW-100
+
+- Enable hardware watchdog timer on ESP32.
+- Feed watchdog from the main loop; reset the device
+  automatically if firmware becomes unresponsive.
+- Log watchdog reset events for diagnostics.
 
 ---
 
@@ -229,8 +245,9 @@ The device shall support **three operating modes**:
 6. **As a user**, I want the device to operate on battery
    power when unplugged.
 7. **As a user**, I want the battery to charge safely and automatically
-   when conneted to external power (USB or 12v barrel connector).
-9. **As a user**, I want to see a low-battery warning on
+   when connected to external power (USB or 12 V barrel
+   connector).
+8. **As a user**, I want to see a low-battery warning on
    the keypad.
 
 ### 4.2 Performance — REQ-SYS-010
@@ -274,12 +291,16 @@ The device shall support **three operating modes**:
 ### 6.1 Hardware
 
 - I2C bus speed: max 400 kHz.
-- NeoTrellis connects to custom pcb via 4 Pin JST-PH 2mm Cable–Female/Female
-  (https://www.adafruit.com/product/3568)
+- NeoTrellis connects to custom PCB via 4 Pin JST-PH
+  2 mm cable — female/female
+  (https://www.adafruit.com/product/3568).
 - ESP32 peak current during WiFi TX: ~500 mA.
 - PCB dimensions constrained by enclosure.
 - 18650 cell adds ~18.5 × 65 mm to enclosure volume.
-- Heat dissipation from charge controller and LDO.
+- 12 V → 5 V step-down regulator required; input
+  reverse-polarity protection on barrel jack.
+- Heat dissipation from charge controller, LDO, and
+  12 V regulator.
 
 ### 6.2 Firmware
 
@@ -288,6 +309,7 @@ The device shall support **three operating modes**:
 - WiFi range limited by on-module antenna.
 - Dependent on external MQTT broker availability.
 - NeoTrellis seesaw library compatibility.
+- BLE provisioning shares radio with WiFi (time-mux).
 
 ---
 
@@ -295,11 +317,14 @@ The device shall support **three operating modes**:
 
 ### 7.1 Hardware Tests
 
-- Power supply continuity and voltage regulation.
+- Power supply continuity and voltage regulation
+  (5 V USB, 12 V barrel, 3.3 V LDO).
+- 12 V barrel reverse-polarity protection test.
 - I2C communication with NeoTrellis (bus scan).
 - All 16 buttons register presses correctly.
 - LED colour and brightness accuracy.
-- Battery charging and protection circuit validation.
+- Battery charging via USB and 12 V paths; protection
+  circuit validation.
 - Long-term reliability (48-hour soak test).
 
 ### 7.2 Firmware Tests
@@ -307,7 +332,9 @@ The device shall support **three operating modes**:
 - Unit tests for each core module.
 - MQTT publish / subscribe integration tests.
 - Network failure and recovery tests.
-- Rapid button-press load test.
+- Rapid button-press and double-press detection test.
+- BLE provisioning flow test.
+- Sleep-mode timeout and wake test.
 - Power-cycle configuration persistence test.
 - Battery voltage ADC accuracy test.
 
@@ -317,7 +344,8 @@ The device shall support **three operating modes**:
 - Multi-device status monitoring.
 - OTA update followed by configuration persistence
   check.
-- Battery-to-USB switchover during operation.
+- Power-path switchover (USB ↔ battery ↔ 12 V) during
+  active operation.
 
 ---
 
@@ -346,7 +374,8 @@ The device shall support **three operating modes**:
   units.
 - **Scenes** — complex multi-device actions.
 - **Scheduling** — time-based automation triggers.
-- **Speaker(s) & Microphone** — for interactive voice responce / music output 
+- **Speaker(s) & Microphone** — for interactive voice
+  response / music output.
 - **Voice Control** — integration with voice assistants.
 
 ---
@@ -369,7 +398,7 @@ The device shall support **three operating modes**:
 
 ### Related Projects
 
-- Original Particle.io Electron NeoTrellis keypad, 
+- Original Particle.io Electron NeoTrellis keypad,
   [button_cat](firmware/legacy/button-cat.ino).
 - [Adafruit NeoTrellis M4](https://www.adafruit.com/product/4020)
 
@@ -381,4 +410,4 @@ The device shall support **three operating modes**:
 |---------|------|---------|
 | 1.0 | Feb 2026 | Initial project specification |
 | 2.0 | Feb 2026 | Split into requirements document; added 18650 battery requirements; added battery monitoring firmware requirements |
-| 2.1 | Feb 2026 | Manually refine requiremnts & add legacy firmare source code |
+| 2.1 | Feb 2026 | Manually refine requirements & add legacy firmware source code |
