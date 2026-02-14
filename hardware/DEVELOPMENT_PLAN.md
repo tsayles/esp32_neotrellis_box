@@ -161,9 +161,124 @@ autonomously.
 
 ---
 
-## 5. PCB Design
+## 5. Enclosure ↔ PCB Co-Design
 
-### 5.1 Tool & Files
+The enclosure and PCB are designed together in an
+**iterative convergence loop**.  The enclosure is
+selected first (Thingiverse search), then the PCB is
+designed to fit inside it.  If the PCB cannot fit, the
+enclosure choice is revisited, and the loop repeats.
+
+### 5.1 Convergence Loop
+
+```
+  ┌───────────────────────────────────────────┐
+  │  1. Search Thingiverse for enclosures     │
+  │  2. Extract internal dimensions &         │
+  │     mounting constraints                  │
+  │  3. Define PCB board outline to fit       │
+  └──────────────────┬────────────────────────┘
+                     ▼
+  ┌───────────────────────────────────────────┐
+  │  4. Place components; route PCB           │
+  │  5. Run DRC                               │
+  └──────────────────┬────────────────────────┘
+                     ▼
+              ┌──────────────┐
+              │  PCB fits    │──► YES ──► Done
+              │  enclosure?  │
+              └──────┬───────┘
+                     │ NO
+                     ▼
+              ┌──────────────┐
+              │ Can enclosure│──► YES ──► Adapt
+              │ be adapted?  │           enclosure
+              └──────┬───────┘           & retry
+                     │ NO
+                     ▼
+              Select next enclosure
+              candidate & retry
+```
+
+### 5.2 Enclosure-First Search (Agent — Autonomous)
+
+1. Agent searches
+   [Thingiverse](https://www.thingiverse.com/) using
+   keywords: `NeoTrellis`, `4x4 keypad enclosure`,
+   `ESP32 button box`, `elastomer keypad case`.
+2. Agent evaluates candidates against:
+   - NeoTrellis 4×4 board (~56 × 56 mm).
+   - 18650 cell holder (~20 × 70 mm).
+   - USB Type-C port access.
+   - Wall-mount option (preferred).
+3. Agent ranks top 3 candidates by fit, posts on PR
+   with links, internal dimensions, and mounting
+   analysis.
+4. **Human selects** preferred enclosure (or agent
+   proceeds with best-ranked if human defers).
+5. Agent extracts:
+   - Maximum PCB X × Y dimensions.
+   - Board-edge keep-out zones.
+   - Standoff / mounting hole positions.
+   - Connector opening locations.
+
+### 5.3 PCB Layout to Enclosure (Agent — Autonomous)
+
+1. Agent sets KiCAD board outline from enclosure
+   internal dimensions.
+2. Agent places mounting holes to match enclosure
+   standoffs.
+3. Agent positions USB-C connector aligned with
+   enclosure opening.
+4. Agent places components and routes traces within
+   the constrained outline.
+5. Agent runs DRC — iterates until zero errors.
+
+### 5.4 Fit Verification
+
+After each layout iteration the agent checks:
+
+| Check | Method | Action on Fail |
+|-------|--------|----------------|
+| Board fits enclosure X × Y | Compare outline vs. enclosure dims | Re-place components or try next enclosure |
+| Max component height | Check 3D model clearance | Swap to lower-profile part or adapt enclosure lid |
+| Mounting holes align | Overlay PCB on enclosure model | Adjust board outline or hole positions |
+| USB-C aligns with opening | Compare connector position | Shift board or modify enclosure cutout |
+| 18650 holder clears PCB | Check 3D interference | Relocate holder or adapt enclosure depth |
+| WiFi antenna not blocked | Verify keep-out in enclosure | Reposition ESP32 or adjust enclosure material/shape |
+
+### 5.5 Enclosure Adaptation
+
+If the selected enclosure requires modification:
+
+- Agent downloads source files (SCAD / STEP / STL).
+- Agent modifies in FreeCAD or OpenSCAD:
+  - Adjust internal dimensions.
+  - Add / move standoff bosses.
+  - Modify connector cutouts.
+  - Add 18650 compartment if missing.
+- Agent exports modified STL → `enclosure/3d-print/`.
+- Agent posts before/after dimensional comparison on PR.
+
+### 5.6 Convergence Criteria
+
+The loop exits when **all** of the following are true:
+
+- [ ] PCB outline fits within enclosure internal dims
+      with ≥ 0.5 mm clearance on all sides.
+- [ ] All mounting holes align with enclosure standoffs.
+- [ ] USB-C connector centred on enclosure opening.
+- [ ] 18650 cell holder fits without interference.
+- [ ] WiFi antenna has clear path (no metal/dense
+      plastic obstruction).
+- [ ] DRC passes with zero errors.
+- [ ] 3D model assembly shows no collisions.
+
+---
+
+## 6. PCB Design Details
+
+### 6.1 Tool & Files
 
 - **KiCAD 7.0+**
 - Project files: `hardware/kicad/`
@@ -171,7 +286,7 @@ autonomously.
 - Custom footprints: `hardware/kicad/footprints/`
 - 3D models: `hardware/kicad/3dmodels/`
 
-### 5.2 Design Rules
+### 6.2 Design Rules
 
 | Parameter | Value |
 |-----------|-------|
@@ -179,9 +294,9 @@ autonomously.
 | Min trace width | 0.25 mm (signal), 0.5 mm (power) |
 | Min via diameter | 0.8 mm |
 | Copper weight | 1 oz |
-| Board outline | TBD — sized to enclosure |
+| Board outline | Derived from enclosure internal dims (§5) |
 
-### 5.3 Layout Considerations
+### 6.3 Layout Considerations
 
 - WiFi antenna keep-out zone (≥ 10 mm clearance).
 - Decoupling caps adjacent to IC power pins.
@@ -191,7 +306,7 @@ autonomously.
 
 ---
 
-## 6. Pin Mapping
+## 7. Pin Mapping
 
 *Finalise during schematic capture.*
 
@@ -204,31 +319,6 @@ autonomously.
 | GND | Ground | GND rail |
 
 ---
-
-## 7. Enclosure
-
-### 7.1 Approach
-
-Search [Thingiverse](https://www.thingiverse.com/) for
-an existing NeoTrellis or 4×4 keypad enclosure and adapt
-to fit this project's PCB and 18650 cell.
-
-### 7.2 Agent Enclosure Search Workflow
-
-1. Agent searches Thingiverse using keywords:
-   `NeoTrellis`, `4x4 keypad enclosure`,
-   `ESP32 button box`, `elastomer keypad case`.
-2. Agent evaluates candidate dimensions against:
-   - NeoTrellis 4×4 board (~56 × 56 mm).
-   - Custom PCB (dimensions from KiCAD).
-   - 18650 cell holder (~20 × 70 mm).
-   - USB Type-C port access.
-3. Agent posts top candidates on PR with links and
-   dimensional analysis.
-4. Human selects preferred design.
-5. Agent downloads and adapts (FreeCAD / OpenSCAD).
-6. Output: STL → `enclosure/3d-print/`,
-   DXF → `enclosure/laser-cut/`.
 
 ---
 
@@ -293,29 +383,37 @@ Preliminary BOM:
 - [ ] **Gate**: All simulations pass before proceeding to
       PCB layout.
 
-### Phase 4 — PCB Layout (Agent — Autonomous)
+### Phase 4 — Enclosure ↔ PCB Co-Design (Agent — Autonomous)
 
-- [ ] Assign footprints to all components.
-- [ ] Define board outline (matched to enclosure
-      candidate dimensions).
-- [ ] Place components; route traces.
-- [ ] Run DRC — iterate until zero errors.
-- [ ] Generate Gerber files → `hardware/gerbers/`.
-- [ ] Generate BOM → `hardware/bom/`.
-- [ ] Post layout screenshots and DRC report on PR.
+This phase implements the convergence loop described in
+§5.  Enclosure selection drives the PCB board outline;
+the two iterate until both fit.
 
-### Phase 5 — Enclosure Sourcing (Agent — Autonomous)
+- [ ] **4a — Enclosure search**: Search Thingiverse for
+      candidate enclosures (see §5.2).
+- [ ] **4b — Rank & propose**: Post top 3 candidates on
+      PR with internal dimensions and fitment analysis.
+- [ ] **4c — Human selects** preferred enclosure (or
+      agent proceeds with best-ranked).
+- [ ] **4d — Extract constraints**: Board outline,
+      mounting holes, connector openings from enclosure.
+- [ ] **4e — PCB layout**: Set board outline in KiCAD;
+      place components; route traces (see §6).
+- [ ] **4f — DRC**: Run Design Rules Check — iterate
+      until zero errors.
+- [ ] **4g — Fit check**: Verify PCB fits enclosure per
+      §5.4 checks.
+- [ ] **4h — Iterate**: If fit check fails:
+  - Attempt enclosure adaptation (§5.5), **or**
+  - Select next enclosure candidate and repeat from 4d.
+- [ ] **4i — Convergence**: All §5.6 criteria met.
+- [ ] **4j — Generate outputs**:
+  - Gerber files → `hardware/gerbers/`.
+  - BOM → `hardware/bom/`.
+  - Adapted enclosure STL → `enclosure/3d-print/`.
+- [ ] Post final layout + enclosure report on PR.
 
-- [ ] Search Thingiverse for candidate enclosures.
-- [ ] Evaluate dimensional fit (PCB + 18650 + NeoTrellis).
-- [ ] Post top 3 candidates on PR with links and
-      analysis.
-- [ ] **Human selects** preferred enclosure design.
-- [ ] Agent downloads and adapts design to final PCB
-      dimensions.
-- [ ] Export STL / DXF to `enclosure/`.
-
-### Phase 6 — Prototype Fabrication (Human — Physical)
+### Phase 5 — Prototype Fabrication (Human — Physical)
 
 - [ ] Human reviews and approves Gerbers + BOM on PR.
 - [ ] Order PCBs (JLCPCB or OSH Park).
@@ -323,13 +421,13 @@ Preliminary BOM:
 - [ ] Solder and assemble prototype.
 - [ ] Print enclosure.
 
-### Phase 7 — HIL Bring-Up & Validation (Agent + Human)
+### Phase 6 — HIL Bring-Up & Validation (Agent + Human)
 
 This phase follows the HIL paradigm: agent runs
 automated tests on the physical prototype connected to
 the lab workstation (ESP32 via USB serial).
 
-#### 7.1 Hardware Verification Checklist
+#### 6.1 Hardware Verification Checklist
 
 Before autonomous testing begins:
 
@@ -340,7 +438,7 @@ Before autonomous testing begins:
 - [ ] Battery installed and charging indicator active.
 - [ ] `gh` CLI authenticated; PR accessible.
 
-#### 7.2 Autonomous HIL Test Execution
+#### 6.2 Autonomous HIL Test Execution
 
 Agent runs the hardware test suite (§10) iteratively:
 
@@ -353,7 +451,7 @@ Agent runs the hardware test suite (§10) iteratively:
 6. **Escalate** if hardware intervention needed (e.g.
    probe a voltage, press a button, reconnect a cable).
 
-#### 7.3 Post-HIL Actions
+#### 6.3 Post-HIL Actions
 
 - [ ] Agent posts full test report on PR.
 - [ ] Agent documents errata and revision notes.
