@@ -32,13 +32,21 @@ hardware/
 
 ## Pin Mapping
 
-| ESP32-C3 Pin | Function       | NeoTrellis Connection |
-|--------------|----------------|-----------------------|
-| GPIO8        | SDA            | I2C Data              |
-| GPIO9        | SCL            | I2C Clock             |
-| GPIO3        | ADC1_CH3       | Battery voltage sense |
-| 3.3 V        | Power          | VCC                   |
-| GND          | Ground         | GND                   |
+| ESP32-C3 Pin | Function       | Connection            | Notes                        |
+|--------------|----------------|-----------------------|------------------------------|
+| GPIO0        | SDA            | I2C Data (NeoTrellis) | ADC1_CH0; safe GPIO          |
+| GPIO10       | SCL            | I2C Clock (NeoTrellis)| Safe GPIO                    |
+| GPIO3        | ADC1_CH3       | Battery voltage sense | ADC1 only — works with WiFi  |
+| 3V3          | Power          | NeoTrellis VCC        |                              |
+| GND          | Ground         | NeoTrellis GND        |                              |
+
+> **Note — I2C pins:** GPIO8 and GPIO9 are strapping pins on the
+> ESP32-C3.  Attaching I2C pull-ups there can disturb the boot mode.
+> GPIO0 and GPIO10 are the recommended safe alternatives.
+
+> **Note — ADC2:** GPIO5 belongs to ADC2, which is unavailable
+> when Wi-Fi is active.  Always use ADC1 pins (GPIO0–4) for
+> analog measurements in this project.
 
 ## ESP32-C3 Super Mini — Breadboard Pinout
 
@@ -50,43 +58,46 @@ leaving **one column free on each side** for jumper wires.
               ┌─────[USB-C]─────┐
               │  ESP32-C3       │
               │   Super Mini    │
-       3V3  ──┤ L1           R1 ├──  GND
-        EN  ──┤ L2           R2 ├──  GPIO10
-     GPIO4  ──┤ L3           R3 ├──  GPIO3   (ADC — battery sense)
-     GPIO5  ──┤ L4           R4 ├──  GPIO2   (ADC)
-     GPIO6  ──┤ L5           R5 ├──  GPIO1   (UART TX)
-     GPIO7  ──┤ L6           R6 ├──  GPIO0   (UART RX)
-  GPIO8/SDA ──┤ L7           R7 ├──  GPIO9/SCL
-       GND  ──┤ L8           R8 ├──  5V
+  GPIO21/TX ──┤ L1           R1 ├──  5V
+  GPIO20/RX ──┤ L2           R2 ├──  GND
+     GPIO10 ──┤ L3           R3 ├──  3V3
+    GPIO9 ★ ──┤ L4           R4 ├──  GPIO4  (ADC1_CH4, RTC)
+    GPIO8 ★ ──┤ L5           R5 ├──  GPIO3  (ADC1_CH3, RTC)  ← battery ADC
+      GPIO7 ──┤ L6           R6 ├──  GPIO2  (ADC1_CH2, RTC, ★)
+      GPIO6 ──┤ L7           R7 ├──  GPIO1  (ADC1_CH1, RTC)
+      GPIO5 ──┤ L8           R8 ├──  GPIO0  (ADC1_CH0, RTC)  ← I2C SDA
               └─────────────────┘
+  L3 GPIO10 ──────────────────────────────────────────────── I2C SCL
+
+  ★  strapping pin — use with caution (affects boot mode)
 ```
 
 ### Breadboard Layout (top view)
 
+Left-side pins occupy **column b**; right-side pins occupy **column i**.
+Columns **a** and **j** remain free for jumper wires.
+
 ```
   col:  a   b   c   d   e ║ f   g   h   i   j
-        ·   ·   ·   ·   · ║ ·   ·   ·   ·   ·   ← free rows (above module)
-        ·  ┌─────────────────────────────┐  ·
-3V3     ·  │L1        USB-C         R1  │  ·   GND
-EN      ·  │L2                      R2  │  ·   GPIO10
-GPIO4   ·  │L3                      R3  │  ·   GPIO3
-GPIO5   ·  │L4                      R4  │  ·   GPIO2
-GPIO6   ·  │L5                      R5  │  ·   GPIO1/TX
-GPIO7   ·  │L6                      R6  │  ·   GPIO0/RX
-SDA/8   ·  │L7                      R7  │  ·   GPIO9/SCL
-GND     ·  │L8                      R8  │  ·   5V
-        ·  └─────────────────────────────┘  ·
-        ·   ·   ·   ·   · ║ ·   ·   ·   ·   ·   ← free rows (below module)
+        ·   ·   ·   ·   · ║ ·   ·   ·   ·   ·   ← free rows (above)
+        ·  ┌───────────────────────────────┐  ·
+TX/21   ·  │L1        USB-C           R1  │  ·   5V
+RX/20   ·  │L2                        R2  │  ·   GND
+GPIO10  ·  │L3                        R3  │  ·   3V3
+GPIO9 ★ ·  │L4                        R4  │  ·   GPIO4
+GPIO8 ★ ·  │L5                        R5  │  ·   GPIO3 ← bat. ADC
+GPIO7   ·  │L6                        R6  │  ·   GPIO2
+GPIO6   ·  │L7                        R7  │  ·   GPIO1
+GPIO5   ·  │L8                        R8  │  ·   GPIO0 ← SDA
+        ·  └───────────────────────────────┘  ·
+        ·   ·   ·   ·   · ║ ·   ·   ·   ·   ·   ← free rows (below)
 ```
-
-- Left-side pins land in **column b**; right-side pins in **column i**.
-- Columns **a** and **j** remain free for jumper wires.
 
 ### NeoTrellis I2C Wiring (Breadboard Prototype)
 
-| NeoTrellis Pin | Colour | ESP32-C3 Pin           |
-|----------------|--------|------------------------|
-| SDA            | Blue   | GPIO8 — L7, column b   |
-| SCL            | Yellow | GPIO9 — R7, column i   |
-| VCC            | Red    | 3V3  — L1, column b    |
-| GND            | Black  | GND  — R1, column i    |
+| NeoTrellis Pin | Colour | ESP32-C3 Pin                  |
+|----------------|--------|-------------------------------|
+| SDA            | Blue   | GPIO0 — R8, column i (bottom) |
+| SCL            | Yellow | GPIO10 — L3, column b         |
+| VCC            | Red    | 3V3  — R3, column i           |
+| GND            | Black  | GND  — R2, column i           |

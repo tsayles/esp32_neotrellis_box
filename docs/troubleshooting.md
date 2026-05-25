@@ -11,7 +11,7 @@
 
 ### Buttons not responding
 
-- Check I2C connections (SDA → GPIO8, SCL → GPIO9).
+- Check I2C connections (SDA → GPIO0, SCL → GPIO10).
 - Verify I2C pull-up resistors are installed (4.7 kΩ).
 - Run an I2C scanner sketch to confirm the NeoTrellis
   address (default `0x2E`).

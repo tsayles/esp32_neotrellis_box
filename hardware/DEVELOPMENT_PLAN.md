@@ -338,11 +338,14 @@ The loop exits when **all** of the following are true:
 
 | ESP32-C3 Pin | Function | Connection |
 |--------------|----------|------------|
-| GPIO8  | SDA      | I2C Data (NeoTrellis) |
-| GPIO9  | SCL      | I2C Clock (NeoTrellis) |
+| GPIO0  | SDA      | I2C Data (NeoTrellis) |
+| GPIO10 | SCL      | I2C Clock (NeoTrellis) |
 | GPIO3  | ADC1_CH3 | Battery voltage sense |
 | 3.3 V  | Power    | VCC rail |
 | GND    | Ground   | GND rail |
+
+> GPIO8 and GPIO9 are strapping pins; use GPIO0 / GPIO10 for
+> I2C to avoid boot-mode interference.
 
 ---
 
