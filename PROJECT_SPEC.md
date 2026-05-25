@@ -53,12 +53,14 @@ integration work:
 
 | Attribute | Requirement |
 |-----------|-------------|
-| Part | ESP32-WROOM-32 or compatible |
-| CPU | Dual-core Xtensa LX6 @ 240 MHz |
-| RAM | ≥ 520 KB SRAM |
+| Part | ESP32-C3 Super Mini |
+| CPU | Single-core RISC-V @ 160 MHz |
+| RAM | ≥ 400 KB SRAM |
+| Flash | 4 MB (on-module) |
 | WiFi | 802.11 b/g/n |
-| Bluetooth | 4.2 BR/EDR + BLE |
+| Bluetooth | BLE 5.0 |
 | Interfaces | I2C, SPI, UART, ADC |
+| USB | Native USB-C (CDC + JTAG) |
 
 ### 2.2 Input Device — REQ-HW-020
 
@@ -93,7 +95,7 @@ The device shall support **three operating modes**:
 
 | Subsystem | Peak Current |
 |-----------|-------------|
-| ESP32 (WiFi TX) | ~500 mA |
+| ESP32-C3 (WiFi TX) | ~350 mA |
 | NeoTrellis (all LEDs max) | ~200 mA |
 | Charge controller quiescent | ~2 mA |
 | 12 V → 5 V regulator quiescent | ~5 mA |
@@ -294,7 +296,7 @@ The device shall support **three operating modes**:
 - NeoTrellis connects to custom PCB via 4 Pin JST-PH
   2 mm cable — female/female
   (https://www.adafruit.com/product/3568).
-- ESP32 peak current during WiFi TX: ~500 mA.
+- ESP32-C3 peak current during WiFi TX: ~350 mA.
 - PCB dimensions constrained by enclosure.
 - 18650 cell adds ~18.5 × 65 mm to enclosure volume.
 - 12 V → 5 V step-down regulator required; input
@@ -304,7 +306,7 @@ The device shall support **three operating modes**:
 
 ### 6.2 Firmware
 
-- ESP32 SRAM: 520 KB (shared with WiFi stack).
+- ESP32-C3 SRAM: 400 KB (shared with WiFi stack).
 - LittleFS partition size limits web UI assets.
 - WiFi range limited by on-module antenna.
 - Dependent on external MQTT broker availability.
@@ -385,7 +387,7 @@ The device shall support **three operating modes**:
 ### Hardware
 
 - [Adafruit NeoTrellis](https://learn.adafruit.com/adafruit-neotrellis)
-- [ESP32 Technical Reference](https://www.espressif.com/en/support/documents/technical-documents)
+- [ESP32-C3 Technical Reference](https://www.espressif.com/en/support/documents/technical-documents)
 - [KiCAD Documentation](https://docs.kicad.org/)
 - [TP4056 Li-Ion Charger](https://dlnmh9ip6v2uc.cloudfront.net/datasheets/Prototyping/TP4056.pdf)
 - [STEMMA Cable - 4 Pin JST-PH 2mm Cable–Female/Female - 150mm/6" Long](https://www.adafruit.com/product/3568)
@@ -411,3 +413,4 @@ The device shall support **three operating modes**:
 | 1.0 | Feb 2026 | Initial project specification |
 | 2.0 | Feb 2026 | Split into requirements document; added 18650 battery requirements; added battery monitoring firmware requirements |
 | 2.1 | Feb 2026 | Manually refine requirements & add legacy firmware source code |
+| 2.2 | May 2026 | Update target MCU from ESP32-WROOM-32 to ESP32-C3 Super Mini |

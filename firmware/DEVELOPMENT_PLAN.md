@@ -123,15 +123,15 @@ Phase 5  ──►  Completion & Human Validation
 ### 3.3 HIL Lab Setup
 
 ```
-┌──────────┐  USB/Serial  ┌──────────────┐
-│   Lab    │◄────────────►│  ESP32 Dev   │
-│Workstation│              │   Board      │
+┌──────────┐  USB-C       ┌──────────────┐
+│   Lab    │◄────────────►│  ESP32-C3    │
+│Workstation│              │  Super Mini  │
 │ (agent)  │              │  + NeoTrellis│
 └──────────┘              │  + 18650     │
                           └──────────────┘
 ```
 
-Agent connects to ESP32 via serial port for:
+Agent connects to ESP32-C3 via USB-C for:
 - Flashing firmware (`pio run -t upload`).
 - Serial monitor for logs and test output.
 - PlatformIO test runner for on-device tests.

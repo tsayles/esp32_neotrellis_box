@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - Assembled PCB (or prototype breadboard)
-- ESP32 development board
+- ESP32-C3 Super Mini development board
 - Adafruit NeoTrellis 4x4 keypad
 - USB cable for power and programming
 - Enclosure (optional)

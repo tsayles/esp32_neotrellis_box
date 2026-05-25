@@ -37,7 +37,7 @@ and are developed with **KiCAD 7.0+**.
 
 ### Core Components
 
-- ESP32-WROOM-32 (or compatible module)
+- ESP32-C3 Super Mini
 - Adafruit NeoTrellis 4x4 RGB Keypad
 - Custom 2-layer PCB
 - USB Type-C / barrel-jack power input

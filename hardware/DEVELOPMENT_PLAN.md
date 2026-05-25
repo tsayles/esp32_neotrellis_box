@@ -87,8 +87,9 @@ Phase 5  ──►  Completion & Human Validation
 
 ### 3.1 Microcontroller
 
-- **ESP32-WROOM-32** (or ESP32-DevKitC for prototyping).
-- Dual-core 240 MHz, 520 KB SRAM, WiFi + BLE.
+- **ESP32-C3 Super Mini**.
+- Single-core RISC-V @ 160 MHz, 400 KB SRAM, 4 MB flash,
+  WiFi 802.11 b/g/n, BLE 5.0, native USB-C.
 - REQ-HW-010.
 
 ### 3.2 Input Device
@@ -335,13 +336,13 @@ The loop exits when **all** of the following are true:
 
 *Finalise during schematic capture.*
 
-| ESP32 Pin | Function | Connection |
-|-----------|----------|------------|
-| GPIO21 | SDA | I2C Data (NeoTrellis) |
-| GPIO22 | SCL | I2C Clock (NeoTrellis) |
-| GPIO34 | ADC1_CH6 | Battery voltage sense |
-| 3.3 V | Power | VCC rail |
-| GND | Ground | GND rail |
+| ESP32-C3 Pin | Function | Connection |
+|--------------|----------|------------|
+| GPIO8  | SDA      | I2C Data (NeoTrellis) |
+| GPIO9  | SCL      | I2C Clock (NeoTrellis) |
+| GPIO3  | ADC1_CH3 | Battery voltage sense |
+| 3.3 V  | Power    | VCC rail |
+| GND    | Ground   | GND rail |
 
 ---
 
@@ -355,7 +356,7 @@ Preliminary BOM:
 
 | Qty | Part | Description | Source |
 |-----|------|-------------|--------|
-| 1 | ESP32-WROOM-32 | Microcontroller module | Mouser / DigiKey |
+| 1 | ESP32-C3 Super Mini | Microcontroller module | AliExpress / Amazon |
 | 1 | Adafruit 3954 | NeoTrellis 4x4 RGB Keypad | Adafruit |
 | 1 | TP4056 module | Li-ion charge controller | Amazon / AliExpress |
 | 1 | AMS1117-3.3 | 3.3 V LDO regulator | Mouser |
@@ -531,6 +532,6 @@ Agent runs the hardware test suite (§10) iteratively:
 - [KiCAD 7 Documentation](https://docs.kicad.org/)
 - [ngspice Manual](https://ngspice.sourceforge.io/docs.html)
 - [Adafruit NeoTrellis Learn Guide](https://learn.adafruit.com/adafruit-neotrellis)
-- [ESP32-WROOM-32 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32_datasheet_en.pdf)
+- [ESP32-C3 Datasheet](https://www.espressif.com/sites/default/files/documentation/esp32-c3_datasheet_en.pdf)
 - [STEMMA Cable - JST-PH 4-pin](https://www.adafruit.com/product/3568)
 - [Autonomous Agent Operations](https://github.com/tsayles/homelab/blob/main/hil-agentic-development/docs/architecture/autonomous-agent-operations.md)
