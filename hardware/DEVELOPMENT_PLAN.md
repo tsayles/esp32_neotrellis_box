@@ -396,7 +396,7 @@ Preliminary BOM:
 
 ### Phase 2 — Schematic Capture (Agent — Autonomous)
 
-- [ ] Create KiCAD project and schematic
+- [x] Create KiCAD project and schematic
   - ESP32 module symbol and connections
   - NeoTrellis I2C interface (JST-PH header)
   - TP4056 charge circuit
@@ -407,9 +407,9 @@ Preliminary BOM:
   - Battery voltage divider
   - USB Type-C power input
   - Power-path switchover MOSFET
-- [ ] Run ERC (Electrical Rules Check) — iterate until
+- [x] Run ERC (Electrical Rules Check) — iterate until
       zero errors.
-- [ ] Post schematic review on PR, tag human.
+- [x] Post schematic review on PR, tag human.
 
 ### Phase 3 — SPICE Simulation (Agent — Autonomous)
 
