@@ -103,24 +103,44 @@ def lib_sym(lib_name: str, sym_name: str, _seen=None) -> str:
         return "\n" + block
 
 # ── Schematic element builders ────────────────────────────────────────────────
+STUB = 2.54   # wire stub length in mm (100 mil)
+
+def _wire(x1: float, y1: float, x2: float, y2: float) -> str:
+    return (
+        f'  (wire (pts (xy {x1:.3f} {y1:.3f}) (xy {x2:.3f} {y2:.3f}))\n'
+        f'    (stroke (width 0) (type default))\n'
+        f'    (uuid "{uid()}")\n  )\n'
+    )
+
+def _stub_end(px: float, py: float, cx: float, cy: float) -> tuple:
+    """Return (wx, wy): endpoint of a stub wire from pin (px,py), directed
+    away from component center (cx,cy) by STUB mm."""
+    dx, dy = px - cx, py - cy
+    if abs(dx) >= abs(dy):   # horizontal pin
+        return (px + (STUB if dx >= 0 else -STUB), py)
+    else:                    # vertical pin
+        return (px, py + (STUB if dy >= 0 else -STUB))
+
 _pwr_n = 0
-def power(net: str, x: float, y: float) -> str:
+def power(net: str, x: float, y: float, cx: float = None, cy: float = None) -> str:
+    """Place a power symbol, optionally with a wire stub from (x,y) away from (cx,cy)."""
     global _pwr_n
     _pwr_n += 1
     ref = f"#PWR{_pwr_n:03d}"
-    # GND points down so value label goes below (higher y); others go above (lower y)
-    vy = y + 3.81 if net == "GND" else y - 3.81
-    return (
-        f'  (symbol (lib_id "power:{net}") (at {x:.3f} {y:.3f} 0) (unit 1)\n'
+    lx, ly = (x, y) if cx is None else _stub_end(x, y, cx, cy)
+    stub = _wire(x, y, lx, ly) if (cx is not None and (lx != x or ly != y)) else ""
+    vy = ly + 3.81 if net == "GND" else ly - 3.81
+    return stub + (
+        f'  (symbol (lib_id "power:{net}") (at {lx:.3f} {ly:.3f} 0) (unit 1)\n'
         f'    (in_bom no) (on_board no) (dnp no)\n'
         f'    (uuid "{uid()}")\n'
-        f'    (property "Reference" "{ref}" (at {x:.3f} {y+6.35:.3f} 0)\n'
+        f'    (property "Reference" "{ref}" (at {lx:.3f} {ly+6.35:.3f} 0)\n'
         f'      (effects (font (size 1.27 1.27)) hide)\n    )\n'
-        f'    (property "Value" "{net}" (at {x:.3f} {vy:.3f} 0)\n'
+        f'    (property "Value" "{net}" (at {lx:.3f} {vy:.3f} 0)\n'
         f'      (effects (font (size 1.27 1.27)))\n    )\n'
-        f'    (property "Footprint" "" (at {x:.3f} {y:.3f} 0)\n'
+        f'    (property "Footprint" "" (at {lx:.3f} {ly:.3f} 0)\n'
         f'      (effects (font (size 1.27 1.27)) hide)\n    )\n'
-        f'    (property "Datasheet" "" (at {x:.3f} {y:.3f} 0)\n'
+        f'    (property "Datasheet" "" (at {lx:.3f} {ly:.3f} 0)\n'
         f'      (effects (font (size 1.27 1.27)) hide)\n    )\n'
         f'    (pin "1" (uuid "{uid()}"))\n'
         f'    (instances\n      (project "{PROJ}"\n'
@@ -129,9 +149,13 @@ def power(net: str, x: float, y: float) -> str:
         f'        )\n      )\n    )\n  )\n'
     )
 
-def label(name: str, x: float, y: float, justify: str = "left") -> str:
-    return (
-        f'  (label "{name}" (at {x:.3f} {y:.3f} 0) (fields_autoplaced)\n'
+def label(name: str, x: float, y: float, justify: str = "left",
+          cx: float = None, cy: float = None) -> str:
+    """Place a net label, optionally with a wire stub from (x,y) away from (cx,cy)."""
+    lx, ly = (x, y) if cx is None else _stub_end(x, y, cx, cy)
+    stub = _wire(x, y, lx, ly) if (cx is not None and (lx != x or ly != y)) else ""
+    return stub + (
+        f'  (label "{name}" (at {lx:.3f} {ly:.3f} 0) (fields_autoplaced)\n'
         f'    (effects (font (size 1.27 1.27)) (justify {justify}))\n'
         f'    (uuid "{uid()}")\n  )\n'
     )
@@ -303,185 +327,183 @@ def build_body() -> str:
     b = []
 
     # ── U1: ESP32-C3 Super Mini at (200, 170) ──────────────────────────────
-    # CORRECT formula for pin → schematic coords:
-    #   sch_x = cx + sym_x
-    #   sch_y = cy - sym_y  (KiCAD symbol editor uses Y-up; schematic uses Y-down)
-
     # ── U1: ESP32-C3 Super Mini at (200, 170) ──────────────────────────────
     U1x, U1y = 200.0, 170.0
     Lx = U1x - 15.24   # 184.76
     Rx = U1x + 15.24   # 215.24
     b.append(component("Custom:ESP32-C3-Super-Mini", "U1", "ESP32-C3-Super-Mini", U1x, U1y))
-    # Left pins: sym_y = 17.78,12.70,7.62,2.54,-2.54,-7.62,-12.70,-17.78
-    # sch_y = U1y - sym_y = 152.22,157.30,162.38,167.46,172.54,177.62,182.70,187.78
-    b.append(nc(Lx, U1y - 17.78))                          # pin1  GPIO21/TX  → 152.22
-    b.append(nc(Lx, U1y - 12.70))                          # pin2  GPIO20/RX  → 157.30
-    b.append(label("SCL",   Lx, U1y - 7.62,  "right"))     # pin3  GPIO10     → 162.38
-    b.append(nc(Lx, U1y -  2.54))                          # pin4  GPIO9/BOOT → 167.46
-    b.append(nc(Lx, U1y +  2.54))                          # pin5  GPIO8/LED  → 172.54
-    b.append(nc(Lx, U1y +  7.62))                          # pin6  GPIO7      → 177.62
-    b.append(nc(Lx, U1y + 12.70))                          # pin7  GPIO6      → 182.70
-    b.append(nc(Lx, U1y + 17.78))                          # pin8  GPIO5      → 187.78
-    # Right pins
-    b.append(nc(Rx, U1y - 17.78))                          # pin9  5V         → 152.22
-    b.append(power("GND",    Rx, U1y - 12.70))             # pin10 GND        → 157.30
-    b.append(power("+3V3",   Rx, U1y -  7.62))             # pin11 3V3        → 162.38
-    b.append(nc(Rx, U1y -  2.54))                          # pin12 GPIO4      → 167.46
-    b.append(label("BATT_ADC", Rx, U1y + 2.54, "left"))    # pin13 GPIO3/ADC  → 172.54
-    b.append(nc(Rx, U1y +  7.62))                          # pin14 GPIO2      → 177.62
-    b.append(nc(Rx, U1y + 12.70))                          # pin15 GPIO1      → 182.70
-    b.append(label("SDA",    Rx, U1y + 17.78, "left"))     # pin16 GPIO0/SDA  → 187.78
+    b.append(nc(Lx, U1y - 17.78))
+    b.append(nc(Lx, U1y - 12.70))
+    b.append(label("SCL",      Lx, U1y -  7.62, "right", U1x, U1y))
+    b.append(nc(Lx, U1y -  2.54))
+    b.append(nc(Lx, U1y +  2.54))
+    b.append(nc(Lx, U1y +  7.62))
+    b.append(nc(Lx, U1y + 12.70))
+    b.append(nc(Lx, U1y + 17.78))
+    b.append(nc(Rx, U1y - 17.78))
+    b.append(power("GND",      Rx, U1y - 12.70, U1x, U1y))
+    b.append(power("+3V3",     Rx, U1y -  7.62, U1x, U1y))
+    b.append(nc(Rx, U1y -  2.54))
+    b.append(label("BATT_ADC", Rx, U1y +  2.54, "left",  U1x, U1y))
+    b.append(nc(Rx, U1y +  7.62))
+    b.append(nc(Rx, U1y + 12.70))
+    b.append(label("SDA",      Rx, U1y + 17.78, "left",  U1x, U1y))
 
     # ── J3: NeoTrellis JST-PH Conn_01x04 at (280, 170) ────────────────────
-    # sym: pin1(-5.08,+2.54) pin2(-5.08,0) pin3(-5.08,-2.54) pin4(-5.08,-5.08)
-    # sch: pin1(274.92,167.46) pin2(274.92,170) pin3(274.92,172.54) pin4(274.92,175.08)
     J3x, J3y = 280.0, 170.0
-    J3px = J3x - 5.08   # 274.92
+    J3px = J3x - 5.08
     b.append(component("Connector_Generic:Conn_01x04", "J3", "NeoTrellis_I2C", J3x, J3y))
-    b.append(power("+3V3", J3px, J3y - 2.54))   # pin1 VCC  → (274.92, 167.46)
-    b.append(power("GND",  J3px, J3y))           # pin2 GND  → (274.92, 170.00)
-    b.append(label("SDA",  J3px, J3y + 2.54, "right"))  # pin3 SDA → (274.92, 172.54)
-    b.append(label("SCL",  J3px, J3y + 5.08, "right"))  # pin4 SCL → (274.92, 175.08)
+    b.append(power("+3V3", J3px, J3y - 2.54, J3x, J3y))
+    b.append(power("GND",  J3px, J3y,         J3x, J3y))
+    b.append(label("SDA",  J3px, J3y + 2.54, "right", J3x, J3y))
+    b.append(label("SCL",  J3px, J3y + 5.08, "right", J3x, J3y))
 
     # ── R3, R4: I2C pull-ups ───────────────────────────────────────────────
-    # Device:R: pin1 at sch(cx, cy-3.81), pin2 at sch(cx, cy+3.81)
-    b.append(component("Device:R", "R3", "4.7k", 255.0, 155.0))
-    b.append(power("+3V3", 255.0, 155.0 - 3.81))             # pin1 → +3V3
-    b.append(label("SDA",  255.0, 155.0 + 3.81, "right"))    # pin2 → SDA
+    R3x, R3y = 255.0, 155.0
+    b.append(component("Device:R", "R3", "4.7k", R3x, R3y))
+    b.append(power("+3V3", R3x, R3y - 3.81, R3x, R3y))
+    b.append(label("SDA",  R3x, R3y + 3.81, "right", R3x, R3y))
 
-    b.append(component("Device:R", "R4", "4.7k", 255.0, 175.0))
-    b.append(power("+3V3", 255.0, 175.0 - 3.81))             # pin1 → +3V3
-    b.append(label("SCL",  255.0, 175.0 + 3.81, "right"))    # pin2 → SCL
+    R4x, R4y = 255.0, 175.0
+    b.append(component("Device:R", "R4", "4.7k", R4x, R4y))
+    b.append(power("+3V3", R4x, R4y - 3.81, R4x, R4y))
+    b.append(label("SCL",  R4x, R4y + 3.81, "right", R4x, R4y))
 
     # ── R1, R2: Battery voltage divider ───────────────────────────────────
-    b.append(component("Device:R", "R1", "100k", 175.0, 155.0))
-    b.append(label("VBATT",    175.0, 155.0 - 3.81, "right"))   # pin1 (upper)
-    b.append(label("BATT_ADC", 175.0, 155.0 + 3.81, "left"))    # pin2 (lower)
+    R1x, R1y = 175.0, 155.0
+    b.append(component("Device:R", "R1", "100k", R1x, R1y))
+    b.append(label("VBATT",    R1x, R1y - 3.81, "right", R1x, R1y))
+    b.append(label("BATT_ADC", R1x, R1y + 3.81, "left",  R1x, R1y))
 
-    b.append(component("Device:R", "R2", "100k", 175.0, 175.0))
-    b.append(label("BATT_ADC", 175.0, 175.0 - 3.81, "right"))   # pin1 (upper)
-    b.append(power("GND",      175.0, 175.0 + 3.81))             # pin2 (lower)
+    R2x, R2y = 175.0, 175.0
+    b.append(component("Device:R", "R2", "100k", R2x, R2y))
+    b.append(label("BATT_ADC", R2x, R2y - 3.81, "right", R2x, R2y))
+    b.append(power("GND",      R2x, R2y + 3.81, R2x, R2y))
 
     # ── C3: ESP32 3V3 decoupling at (230, 170) ────────────────────────────
-    b.append(component("Device:C", "C3", "100nF", 230.0, 170.0))
-    b.append(power("+3V3", 230.0, 170.0 - 3.81))   # pin1 (upper)
-    b.append(power("GND",  230.0, 170.0 + 3.81))   # pin2 (lower)
+    C3x, C3y = 230.0, 170.0
+    b.append(component("Device:C", "C3", "100nF", C3x, C3y))
+    b.append(power("+3V3", C3x, C3y - 3.81, C3x, C3y))
+    b.append(power("GND",  C3x, C3y + 3.81, C3x, C3y))
 
     # ── U3: AMS1117-3.3 at (220, 100) ─────────────────────────────────────
-    # sym: pin1 GND(0,-7.62), pin2 VO(+7.62,0), pin3 VI(-7.62,0)
-    # sch: pin1(220,107.62), pin2(227.62,100), pin3(212.38,100)
-    b.append(component("Regulator_Linear:AMS1117-3.3", "U3", "AMS1117-3.3", 220.0, 100.0))
-    b.append(power("GND",  220.0,        100.0 + 7.62))   # pin1 GND  → (220, 107.62)
-    b.append(power("+3V3", 220.0 + 7.62, 100.0))           # pin2 VO   → (227.62, 100)
-    b.append(power("+5V",  220.0 - 7.62, 100.0))           # pin3 VI   → (212.38, 100)
+    U3x, U3y = 220.0, 100.0
+    b.append(component("Regulator_Linear:AMS1117-3.3", "U3", "AMS1117-3.3", U3x, U3y))
+    b.append(power("GND",  U3x,        U3y + 7.62, U3x, U3y))
+    b.append(power("+3V3", U3x + 7.62, U3y,        U3x, U3y))
+    b.append(power("+5V",  U3x - 7.62, U3y,        U3x, U3y))
 
     # ── C1: AMS1117 input bypass at (210, 113) ────────────────────────────
-    b.append(component("Device:C", "C1", "10uF", 210.0, 113.0))
-    b.append(power("+5V", 210.0, 113.0 - 3.81))   # pin1 (upper)
-    b.append(power("GND", 210.0, 113.0 + 3.81))   # pin2 (lower)
+    C1x, C1y = 210.0, 113.0
+    b.append(component("Device:C", "C1", "10uF", C1x, C1y))
+    b.append(power("+5V", C1x, C1y - 3.81, C1x, C1y))
+    b.append(power("GND", C1x, C1y + 3.81, C1x, C1y))
 
     # ── C2: AMS1117 output bypass at (230, 113) ───────────────────────────
-    b.append(component("Device:C", "C2", "10uF", 230.0, 113.0))
-    b.append(power("+3V3", 230.0, 113.0 - 3.81))   # pin1 (upper)
-    b.append(power("GND",  230.0, 113.0 + 3.81))   # pin2 (lower)
+    C2x, C2y = 230.0, 113.0
+    b.append(component("Device:C", "C2", "10uF", C2x, C2y))
+    b.append(power("+3V3", C2x, C2y - 3.81, C2x, C2y))
+    b.append(power("GND",  C2x, C2y + 3.81, C2x, C2y))
 
     # ── J1: USB-C power (Conn_01x02) at (40, 50) ──────────────────────────
-    # sym: pin1(-5.08,0)→sch(34.92,50), pin2(-5.08,-2.54)→sch(34.92,52.54)
-    b.append(component("Connector_Generic:Conn_01x02", "J1", "USB-C_5V_In", 40.0, 50.0))
-    b.append(power("+5V", 34.92, 50.0))     # pin1 VBUS
-    b.append(power("GND", 34.92, 52.54))    # pin2 GND
+    J1x, J1y = 40.0, 50.0
+    b.append(component("Connector_Generic:Conn_01x02", "J1", "USB-C_5V_In", J1x, J1y))
+    b.append(power("+5V", J1x - 5.08, J1y,       J1x, J1y))
+    b.append(power("GND", J1x - 5.08, J1y + 2.54, J1x, J1y))
 
     # ── J2: 12V barrel jack (Conn_01x02) at (40, 100) ─────────────────────
-    b.append(component("Connector_Generic:Conn_01x02", "J2", "12V_Barrel_In", 40.0, 100.0))
-    b.append(label("12V_IN", 34.92, 100.0,  "right"))  # pin1
-    b.append(power("GND",    34.92, 102.54))             # pin2
+    J2x, J2y = 40.0, 100.0
+    b.append(component("Connector_Generic:Conn_01x02", "J2", "12V_Barrel_In", J2x, J2y))
+    b.append(label("12V_IN", J2x - 5.08, J2y,       "right", J2x, J2y))
+    b.append(power("GND",    J2x - 5.08, J2y + 2.54, J2x, J2y))
 
     # ── D1: SS34 reverse polarity at (75, 100) ────────────────────────────
-    # Inherits SB120 geometry: A1(anode) sym(-3.81,0)→sch(71.19,100), A2(cathode) sym(+3.81,0)→sch(78.81,100)
-    b.append(component("Diode:SS34", "D1", "SS34", 75.0, 100.0))
-    b.append(label("12V_IN",   71.19, 100.0, "right"))  # pin A1 anode
-    b.append(label("12V_PROT", 78.81, 100.0, "left"))   # pin A2 cathode
+    D1x, D1y = 75.0, 100.0
+    b.append(component("Diode:SS34", "D1", "SS34", D1x, D1y))
+    b.append(label("12V_IN",   D1x - 3.81, D1y, "right", D1x, D1y))
+    b.append(label("12V_PROT", D1x + 3.81, D1y, "left",  D1x, D1y))
 
     # ── U4: MP1584EN step-down at (115, 85) ───────────────────────────────
-    # Custom sym pins: left at sx=-10.16, right at sx=+10.16
-    # sym_y: 6.35,1.27,-3.81,-8.89 → sch_y: 85-6.35=78.65, 83.73, 88.81, 93.89
     U4x, U4y = 115.0, 85.0
-    U4Lx = U4x - 10.16  # 104.84
-    U4Rx = U4x + 10.16  # 125.16
+    U4Lx = U4x - 10.16
+    U4Rx = U4x + 10.16
     b.append(component("Custom:MP1584EN", "U4", "MP1584EN", U4x, U4y))
-    b.append(label("12V_PROT", U4Lx, U4y - 6.35, "right"))   # pin1 EN  → 78.65
-    b.append(label("12V_PROT", U4Lx, U4y - 1.27, "right"))   # pin2 VIN → 83.73
-    b.append(label("SW_NODE",  U4Lx, U4y + 3.81, "right"))   # pin3 SW  → 88.81
-    b.append(label("12V_PROT", U4Lx, U4y + 8.89, "right"))   # pin4 VIN_EP → 93.89
-    b.append(power("GND",  U4Rx, U4y - 6.35))                # pin5 GND → 78.65
-    b.append(power("GND",  U4Rx, U4y - 1.27))                # pin6 GND2 → 83.73
-    b.append(label("FB_5V",    U4Rx, U4y + 3.81, "left"))    # pin7 FB  → 88.81
-    b.append(label("COMP_5V",  U4Rx, U4y + 8.89, "left"))    # pin8 COMP → 93.89
+    b.append(label("12V_PROT", U4Lx, U4y - 6.35, "right", U4x, U4y))
+    b.append(label("12V_PROT", U4Lx, U4y - 1.27, "right", U4x, U4y))
+    b.append(label("SW_NODE",  U4Lx, U4y + 3.81, "right", U4x, U4y))
+    b.append(label("12V_PROT", U4Lx, U4y + 8.89, "right", U4x, U4y))
+    b.append(power("GND",  U4Rx, U4y - 6.35, U4x, U4y))
+    b.append(power("GND",  U4Rx, U4y - 1.27, U4x, U4y))
+    b.append(label("FB_5V",    U4Rx, U4y + 3.81, "left", U4x, U4y))
+    b.append(label("COMP_5V",  U4Rx, U4y + 8.89, "left", U4x, U4y))
 
-    # ── L1: 10uH inductor at (140, 72) (vertical) ─────────────────────────
-    # Device:L: pin1 sym_y=+3.81 → sch_y=cy-3.81, pin2 sym_y=-3.81 → sch_y=cy+3.81
-    b.append(component("Device:L", "L1", "10uH", 140.0, 72.0))
-    b.append(label("SW_NODE", 140.0, 72.0 - 3.81, "right"))  # pin1 (upper) → SW
-    b.append(power("+5V",     140.0, 72.0 + 3.81))           # pin2 (lower) → +5V
+    # ── L1: 10uH inductor at (140, 72) ────────────────────────────────────
+    L1x, L1y = 140.0, 72.0
+    b.append(component("Device:L", "L1", "10uH", L1x, L1y))
+    b.append(label("SW_NODE", L1x, L1y - 3.81, "right", L1x, L1y))
+    b.append(power("+5V",     L1x, L1y + 3.81, L1x, L1y))
 
-    # ── R7: 100k FB divider high at (152, 82) ─────────────────────────────
-    b.append(component("Device:R", "R7", "100k", 152.0, 82.0))
-    b.append(power("+5V",    152.0, 82.0 - 3.81))            # pin1 (upper) → +5V
-    b.append(label("FB_5V",  152.0, 82.0 + 3.81, "left"))    # pin2 (lower) → FB
+    # ── R7, R8: MP1584EN FB divider ───────────────────────────────────────
+    R7x, R7y = 152.0, 82.0
+    b.append(component("Device:R", "R7", "100k", R7x, R7y))
+    b.append(power("+5V",   R7x, R7y - 3.81, R7x, R7y))
+    b.append(label("FB_5V", R7x, R7y + 3.81, "left", R7x, R7y))
 
-    # ── R8: 39k FB divider low at (152, 95) ───────────────────────────────
-    b.append(component("Device:R", "R8", "39k", 152.0, 95.0))
-    b.append(label("FB_5V", 152.0, 95.0 - 3.81, "right"))    # pin1 (upper) → FB
-    b.append(power("GND",   152.0, 95.0 + 3.81))              # pin2 (lower) → GND
+    R8x, R8y = 152.0, 95.0
+    b.append(component("Device:R", "R8", "39k", R8x, R8y))
+    b.append(label("FB_5V", R8x, R8y - 3.81, "right", R8x, R8y))
+    b.append(power("GND",   R8x, R8y + 3.81, R8x, R8y))
 
-    # ── C4: 22uF MP1584EN output bypass at (162, 72) ─────────────────────
-    b.append(component("Device:C", "C4", "22uF", 162.0, 72.0))
-    b.append(power("+5V", 162.0, 72.0 - 3.81))   # pin1 (upper)
-    b.append(power("GND", 162.0, 72.0 + 3.81))   # pin2 (lower)
+    # ── C4: MP1584EN output bypass at (162, 72) ───────────────────────────
+    C4x, C4y = 162.0, 72.0
+    b.append(component("Device:C", "C4", "22uF", C4x, C4y))
+    b.append(power("+5V", C4x, C4y - 3.81, C4x, C4y))
+    b.append(power("GND", C4x, C4y + 3.81, C4x, C4y))
 
-    # ── C6: 10uF MP1584EN input bypass at (104, 92) ───────────────────────
-    b.append(component("Device:C", "C6", "10uF", 104.0, 92.0))
-    b.append(label("12V_PROT", 104.0, 92.0 - 3.81, "right"))   # pin1 (upper)
-    b.append(power("GND",      104.0, 92.0 + 3.81))             # pin2 (lower)
+    # ── C6: MP1584EN input bypass at (104, 92) ────────────────────────────
+    C6x, C6y = 104.0, 92.0
+    b.append(component("Device:C", "C6", "10uF", C6x, C6y))
+    b.append(label("12V_PROT", C6x, C6y - 3.81, "right", C6x, C6y))
+    b.append(power("GND",      C6x, C6y + 3.81, C6x, C6y))
 
     # ── U2: TP4056 Li-ion charger at (115, 130) ───────────────────────────
-    # Custom sym pins: sym_y 6.35,1.27,-3.81,-8.89 → sch_y: 123.65,128.73,133.81,138.89
     U2x, U2y = 115.0, 130.0
-    U2Lx = U2x - 10.16  # 104.84
-    U2Rx = U2x + 10.16  # 125.16
+    U2Lx = U2x - 10.16
+    U2Rx = U2x + 10.16
     b.append(component("Custom:TP4056", "U2", "TP4056", U2x, U2y))
-    b.append(power("GND",     U2Lx, U2y - 6.35))               # pin1 TEMP  → 123.65
-    b.append(label("PROG_1A", U2Lx, U2y - 1.27, "right"))      # pin2 PROG  → 128.73
-    b.append(power("GND",     U2Lx, U2y + 3.81))               # pin3 GND   → 133.81
-    b.append(power("+5V",     U2Lx, U2y + 8.89))               # pin4 VCC   → 138.89
-    b.append(label("VBATT",   U2Rx, U2y - 6.35, "left"))       # pin5 BAT   → 123.65
-    b.append(nc(U2Rx, U2y - 1.27))                             # pin6 CHRG  → 128.73
-    b.append(nc(U2Rx, U2y + 3.81))                             # pin7 STDBY → 133.81
-    b.append(power("+5V",     U2Rx, U2y + 8.89))               # pin8 CE    → 138.89
+    b.append(power("GND",     U2Lx, U2y - 6.35, U2x, U2y))
+    b.append(label("PROG_1A", U2Lx, U2y - 1.27, "right", U2x, U2y))
+    b.append(power("GND",     U2Lx, U2y + 3.81, U2x, U2y))
+    b.append(power("+5V",     U2Lx, U2y + 8.89, U2x, U2y))
+    b.append(label("VBATT",   U2Rx, U2y - 6.35, "left",  U2x, U2y))
+    b.append(nc(U2Rx, U2y - 1.27))
+    b.append(nc(U2Rx, U2y + 3.81))
+    b.append(power("+5V",     U2Rx, U2y + 8.89, U2x, U2y))
 
     # ── R5: 1.2k PROG resistor at (95, 128) ──────────────────────────────
-    b.append(component("Device:R", "R5", "1.2k", 95.0, 128.0))
-    b.append(label("PROG_1A", 95.0, 128.0 - 3.81, "right"))    # pin1 (upper)
-    b.append(power("GND",     95.0, 128.0 + 3.81))              # pin2 (lower)
+    R5x, R5y = 95.0, 128.0
+    b.append(component("Device:R", "R5", "1.2k", R5x, R5y))
+    b.append(label("PROG_1A", R5x, R5y - 3.81, "right", R5x, R5y))
+    b.append(power("GND",     R5x, R5y + 3.81, R5x, R5y))
 
     # ── BT1: 18650 battery at (155, 130) ──────────────────────────────────
-    # Device:Battery: pin+(1) sym_y=+5.08→sch_y=cy-5.08, pin-(2) sym_y=-5.08→sch_y=cy+5.08
-    b.append(component("Device:Battery", "BT1", "18650_Li-ion", 155.0, 130.0))
-    b.append(label("VBATT", 155.0, 130.0 - 5.08, "right"))   # pin+ (1) → 124.92
-    b.append(power("GND",   155.0, 130.0 + 5.08))             # pin- (2) → 135.08
+    BT1x, BT1y = 155.0, 130.0
+    b.append(component("Device:Battery", "BT1", "18650_Li-ion", BT1x, BT1y))
+    b.append(label("VBATT", BT1x, BT1y - 5.08, "right", BT1x, BT1y))
+    b.append(power("GND",   BT1x, BT1y + 5.08, BT1x, BT1y))
 
     # ── Q1: AO3401A P-ch MOSFET power path at (180, 100) ─────────────────
-    # sym: G(1)(-5.08,0), S(2)(+2.54,-5.08), D(3)(+2.54,+5.08)
-    # sch: G(174.92,100), S(182.54,105.08), D(182.54,94.92)
-    b.append(component("Transistor_FET:AO3401A", "Q1", "AO3401A", 180.0, 100.0))
-    b.append(label("Q1_GATE", 174.92, 100.0,   "right"))   # pin G(1)
-    b.append(power("+5V",     182.54, 105.08))              # pin S(2) source
-    b.append(label("VBATT",   182.54, 94.92,  "left"))      # pin D(3) drain
+    Q1x, Q1y = 180.0, 100.0
+    b.append(component("Transistor_FET:AO3401A", "Q1", "AO3401A", Q1x, Q1y))
+    b.append(label("Q1_GATE", Q1x - 5.08, Q1y,       "right", Q1x, Q1y))
+    b.append(power("+5V",     Q1x + 2.54, Q1y + 5.08, Q1x, Q1y))
+    b.append(label("VBATT",   Q1x + 2.54, Q1y - 5.08, "left",  Q1x, Q1y))
 
     # ── R6: 100k gate pull-up at (165, 100) ───────────────────────────────
-    b.append(component("Device:R", "R6", "100k", 165.0, 100.0))
-    b.append(power("+5V",     165.0, 100.0 - 3.81))             # pin1 (upper) → +5V
-    b.append(label("Q1_GATE", 165.0, 100.0 + 3.81, "left"))     # pin2 (lower) → gate
+    R6x, R6y = 165.0, 100.0
+    b.append(component("Device:R", "R6", "100k", R6x, R6y))
+    b.append(power("+5V",     R6x, R6y - 3.81, R6x, R6y))
+    b.append(label("Q1_GATE", R6x, R6y + 3.81, "left", R6x, R6y))
 
     return "".join(b)
 
