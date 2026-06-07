@@ -397,21 +397,26 @@ Preliminary BOM:
 ### Phase 2 — Schematic Capture (Agent — Autonomous)
 
 - [x] Create KiCAD project and schematic
-  - ESP32 module symbol and connections
+  - ESP32-C3 Super Mini symbol and connections
   - NeoTrellis I2C interface (JST-PH header)
   - TP4056 charge circuit
   - 12 V DC barrel jack input
-  - 12 V → 5 V step-down regulator
-  - Reverse-polarity protection (Schottky diode)
-  - 3.3 V LDO regulation
-  - Battery voltage divider
+  - 12 V → 5 V step-down regulator (MP1584EN)
+  - Reverse-polarity protection (SS34 Schottky)
+  - 3.3 V LDO regulation (AMS1117-3.3)
+  - Battery voltage divider (ADC on GPIO3)
   - USB Type-C power input
-  - Power-path switchover MOSFET
-- [x] Run ERC (Electrical Rules Check) — iterate until
-      zero errors.
-- [x] Post schematic review on PR, tag human.
-- [x] Schematic v2: label-based connectivity, validated by
-      netlist export.
+  - Power-path switchover MOSFET (AO3401A)
+- [x] Schematic validated by `kicad-cli sch export netlist`.
+      All 7 key nets verified correct (+3V3, +5V, GND,
+      VBATT, SDA, SCL, BATT_ADC). 13 expected unconnected
+      pins (unused GPIOs, TP4056 LED pins) correct.
+- [x] Post schematic review on PR, @-tag human for review.
+
+> **Schematic files**: `hardware/kicad/`
+> **Generator script**: `hardware/kicad/scripts/generate_schematic.py`
+> **Note**: KiCAD 7 CLI has no `sch erc` command; netlist
+> export used for structural validation.
 
 ### Phase 3 — SPICE Simulation (Agent — Autonomous)
 
