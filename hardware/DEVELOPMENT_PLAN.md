@@ -410,6 +410,8 @@ Preliminary BOM:
 - [x] Run ERC (Electrical Rules Check) — iterate until
       zero errors.
 - [x] Post schematic review on PR, tag human.
+- [x] Schematic v2: label-based connectivity, validated by
+      netlist export.
 
 ### Phase 3 — SPICE Simulation (Agent — Autonomous)
 
