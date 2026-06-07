@@ -382,14 +382,17 @@ Preliminary BOM:
 
 ### Phase 1 — Collaborative Setup (Human + Agent)
 
-- [ ] Human and agent review requirements and agree on
-      component selection.
-- [ ] Agent verifies tool availability (KiCAD, ngspice,
-      Python, `gh` CLI).
-- [ ] Agent creates feature branch and opens **draft PR**.
-- [ ] Define autonomous operation parameters:
-  - Update cadence (every 2 hours).
-  - Escalation thresholds.
+- [x] Human and agent review requirements and agree on
+      component selection (ESP32-C3 Super Mini confirmed,
+      see PROJECT_SPEC.md §2.1 v2.2).
+- [x] Agent verifies tool availability: KiCAD 7.0.11,
+      ngspice 42, Python 3.12, gh 2.45 — all present.
+- [x] Agent creates feature branch `dev/hardware-phase-1-2`
+      and opens **draft PR**.
+- [x] Autonomous operation parameters defined:
+  - Update cadence: every ~2 hours via PR comments.
+  - Escalation: on tool failure, ERC errors > 5 iter,
+    or any step requiring physical action.
 
 ### Phase 2 — Schematic Capture (Agent — Autonomous)
 
