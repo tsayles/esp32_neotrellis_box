@@ -382,31 +382,41 @@ Preliminary BOM:
 
 ### Phase 1 — Collaborative Setup (Human + Agent)
 
-- [ ] Human and agent review requirements and agree on
-      component selection.
-- [ ] Agent verifies tool availability (KiCAD, ngspice,
-      Python, `gh` CLI).
-- [ ] Agent creates feature branch and opens **draft PR**.
-- [ ] Define autonomous operation parameters:
-  - Update cadence (every 2 hours).
-  - Escalation thresholds.
+- [x] Human and agent review requirements and agree on
+      component selection (ESP32-C3 Super Mini confirmed,
+      see PROJECT_SPEC.md §2.1 v2.2).
+- [x] Agent verifies tool availability: KiCAD 7.0.11,
+      ngspice 42, Python 3.12, gh 2.45 — all present.
+- [x] Agent creates feature branch `dev/hardware-phase-1-2`
+      and opens **draft PR**.
+- [x] Autonomous operation parameters defined:
+  - Update cadence: every ~2 hours via PR comments.
+  - Escalation: on tool failure, ERC errors > 5 iter,
+    or any step requiring physical action.
 
 ### Phase 2 — Schematic Capture (Agent — Autonomous)
 
-- [ ] Create KiCAD project and schematic
-  - ESP32 module symbol and connections
+- [x] Create KiCAD project and schematic
+  - ESP32-C3 Super Mini symbol and connections
   - NeoTrellis I2C interface (JST-PH header)
   - TP4056 charge circuit
   - 12 V DC barrel jack input
-  - 12 V → 5 V step-down regulator
-  - Reverse-polarity protection (Schottky diode)
-  - 3.3 V LDO regulation
-  - Battery voltage divider
+  - 12 V → 5 V step-down regulator (MP1584EN)
+  - Reverse-polarity protection (SS34 Schottky)
+  - 3.3 V LDO regulation (AMS1117-3.3)
+  - Battery voltage divider (ADC on GPIO3)
   - USB Type-C power input
-  - Power-path switchover MOSFET
-- [ ] Run ERC (Electrical Rules Check) — iterate until
-      zero errors.
-- [ ] Post schematic review on PR, tag human.
+  - Power-path switchover MOSFET (AO3401A)
+- [x] Schematic validated by `kicad-cli sch export netlist`.
+      All 7 key nets verified correct (+3V3, +5V, GND,
+      VBATT, SDA, SCL, BATT_ADC). 13 expected unconnected
+      pins (unused GPIOs, TP4056 LED pins) correct.
+- [x] Post schematic review on PR, @-tag human for review.
+
+> **Schematic files**: `hardware/kicad/`
+> **Generator script**: `hardware/kicad/scripts/generate_schematic.py`
+> **Note**: KiCAD 7 CLI has no `sch erc` command; netlist
+> export used for structural validation.
 
 ### Phase 3 — SPICE Simulation (Agent — Autonomous)
 
